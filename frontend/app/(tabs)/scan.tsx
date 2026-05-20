@@ -176,7 +176,7 @@ export default function Scan() {
   }
 
   const fmt = (seconds: number) => {
-    if (seconds <= 0) return "FULL";
+    if (seconds <= 0) return "0:00";
     const m = Math.floor(seconds / 60);
     const ss = seconds % 60;
     return `${m}:${String(ss).padStart(2, "0")}`;

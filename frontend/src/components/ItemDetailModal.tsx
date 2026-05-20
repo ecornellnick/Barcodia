@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView,
   TextInput, Alert, ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  api, Item, RARITY_COLORS, RARITY_GLOW, SLOT_ICON, SLOT_LABEL,
-  STAT_META, ELEMENT_COLOR, Slot,
+  api, Item, RARITY_COLORS, RARITY_GLOW, SLOT_LABEL,
+  STAT_META, ELEMENT_COLOR, Slot, itemIcon,
 } from "@/src/lib/api";
 import { COLORS } from "@/src/lib/theme";
 
@@ -19,6 +19,29 @@ type Props = {
   onChanged: () => void;
 };
 
+const GEAR_STAT_KEYS = ["atk", "int_stat", "def_stat", "res", "dex", "mob", "crit", "luk", "hp", "mana"] as const;
+
+function equipChoicesFor(item: Item): Slot[] {
+  if (item.slot === "leg_l" || item.slot === "leg_r") return ["leg_l", "leg_r"];
+  if (item.slot === "arm_l" || item.slot === "arm_r") return ["arm_l", "arm_r"];
+  if (item.slot === "main_hand" || item.slot === "off_hand") return item.two_handed ? ["main_hand"] : ["main_hand", "off_hand"];
+  return [item.slot];
+}
+
+function findEquippedForSlot(inventory: Item[], slot: Slot) {
+  return inventory.find((i) => i.equipped && (i.equip_slot ?? i.slot) === slot) ?? null;
+}
+
+function elementAura(item: Item) {
+  if (item.element === "fire") return "rgba(245,101,101,0.28)";
+  if (item.element === "ice") return "rgba(99,179,237,0.28)";
+  if (item.element === "lightning") return "rgba(236,201,75,0.30)";
+  if (item.element === "holy") return "rgba(251,211,141,0.30)";
+  if (item.element === "shadow") return "rgba(159,122,234,0.30)";
+  if (item.element === "nature") return "rgba(104,211,145,0.28)";
+  return "rgba(255,255,255,0.04)";
+}
+
 export default function ItemDetailModal({
   visible, item, inventory, charLevel, onClose, onChanged,
 }: Props) {
@@ -27,20 +50,41 @@ export default function ItemDetailModal({
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [price, setPrice] = useState("");
   const [band, setBand] = useState<{ min: number; max: number } | null>(null);
+  const [compareSlot, setCompareSlot] = useState<Slot | null>(null);
 
   useEffect(() => {
     if (!item) return;
-    setShowList(false); setShowUpgrade(false); setPrice(""); setBand(null);
+    setShowList(false);
+    setShowUpgrade(false);
+    setPrice("");
+    setBand(null);
+    const choices = item.slot === "consumable" || item.slot === "upgrade" ? [] : equipChoicesFor(item);
+    setCompareSlot(choices[0] ?? null);
   }, [item]);
+
+  const comparisonItem = useMemo(() => {
+    if (!item || !compareSlot || item.slot === "consumable" || item.slot === "upgrade") return null;
+    const found = findEquippedForSlot(inventory, compareSlot);
+    if (found?.id === item.id) return null;
+    return found;
+  }, [inventory, compareSlot, item]);
 
   if (!item) return null;
   const color = RARITY_COLORS[item.rarity];
   const glow = RARITY_GLOW[item.rarity];
+  const equipSlotChoices = item.slot === "consumable" || item.slot === "upgrade" ? [] : equipChoicesFor(item);
 
   const wrap = async (fn: () => Promise<any>) => {
-    try { setBusy(true); await fn(); onChanged(); onClose(); }
-    catch (e: any) { Alert.alert("Error", e.message ?? "Action failed"); }
-    finally { setBusy(false); }
+    try {
+      setBusy(true);
+      await fn();
+      onChanged();
+      onClose();
+    } catch (e: any) {
+      Alert.alert("Error", e.message ?? "Action failed");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleEquip = (slot?: Slot) => wrap(() => api.equip(item.id, slot));
@@ -58,29 +102,27 @@ export default function ItemDetailModal({
       const b = await api.priceBand(item.id);
       setBand({ min: b.min_price, max: b.max_price });
       setPrice(String(Math.round((b.min_price + b.max_price) / 2)));
-    } catch (e: any) { Alert.alert("Error", e.message); }
+    } catch (e: any) {
+      Alert.alert("Error", e.message);
+    }
   };
 
   const handleList = async () => {
     const p = parseInt(price, 10);
-    if (!band || isNaN(p)) { Alert.alert("Bad price", "Enter a number in range"); return; }
+    if (!band || isNaN(p)) {
+      Alert.alert("Bad price", "Enter a number in range");
+      return;
+    }
     if (p < band.min || p > band.max) {
-      Alert.alert("Out of range", `Must be ${band.min}-${band.max} gold`); return;
+      Alert.alert("Out of range", `Must be ${band.min}-${band.max} gold`);
+      return;
     }
     await wrap(() => api.listItem(item.id, p));
   };
 
   const shards = inventory.filter((i) => i.slot === "upgrade");
   const canUpgrade = item.slot !== "consumable" && item.slot !== "upgrade";
-  const atCap = false; // backend enforces soft cap; shard XP can still be banked
   const handleUpgrade = (scrollId: string) => wrap(() => api.upgrade(item.id, scrollId));
-
-  const equipSlotChoices: Slot[] =
-    item.slot === "leg_l" || item.slot === "leg_r" ? ["leg_l", "leg_r"]
-    : item.slot === "arm_l" || item.slot === "arm_r" ? ["arm_l", "arm_r"]
-    : item.slot === "main_hand" || item.slot === "off_hand"
-        ? (item.two_handed ? ["main_hand"] : ["main_hand", "off_hand"])
-    : [item.slot];
 
   const renderStats = () => {
     const rows = STAT_META.filter((s) => (item as any)[s.key] > 0);
@@ -97,6 +139,63 @@ export default function ItemDetailModal({
     );
   };
 
+  const renderComparison = () => {
+    if (item.slot === "consumable" || item.slot === "upgrade") return null;
+    return (
+      <View style={styles.compareBox}>
+        <View style={styles.compareHeader}>
+          <Text style={styles.compareTitle}>EQUIP COMPARISON</Text>
+          {equipSlotChoices.length > 1 && (
+            <View style={styles.slotToggleRow}>
+              {equipSlotChoices.map((slot) => (
+                <TouchableOpacity
+                  key={slot}
+                  onPress={() => setCompareSlot(slot)}
+                  style={[styles.slotToggle, compareSlot === slot && styles.slotToggleActive]}
+                >
+                  <Text style={[styles.slotToggleText, compareSlot === slot && styles.slotToggleTextActive]}>
+                    {SLOT_LABEL[slot]}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.compareNames}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.compareSmall}>CURRENT</Text>
+            <Text style={styles.compareName} numberOfLines={1}>{comparisonItem?.name ?? "Empty Slot"}</Text>
+          </View>
+          <Ionicons name="arrow-forward" color={COLORS.textMuted} size={18} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.compareSmall}>NEW</Text>
+            <Text style={[styles.compareName, { color }]} numberOfLines={1}>{item.name}</Text>
+          </View>
+        </View>
+
+        <View style={styles.deltaGrid}>
+          {GEAR_STAT_KEYS.map((key) => {
+            const before = Number((comparisonItem as any)?.[key] ?? 0);
+            const after = Number((item as any)?.[key] ?? 0);
+            const delta = after - before;
+            const meta = STAT_META.find((s) => s.key === key);
+            if (!meta || (before === 0 && after === 0)) return null;
+            return (
+              <View key={key} style={styles.deltaRow}>
+                <Text style={styles.deltaLabel}>{meta.label}</Text>
+                <Text style={styles.deltaBase}>{before} → {after}</Text>
+                <Text style={[styles.deltaValue, delta > 0 ? styles.deltaUp : delta < 0 ? styles.deltaDown : styles.deltaEven]}>
+                  {delta > 0 ? `+${delta}` : delta}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -106,8 +205,8 @@ export default function ItemDetailModal({
               <Ionicons name="close" size={24} color={COLORS.textSecondary} />
             </TouchableOpacity>
 
-            <View style={[styles.iconBig, { borderColor: color, shadowColor: glow }]}>
-              <Text style={{ fontSize: 52 }}>{SLOT_ICON[item.slot]}</Text>
+            <View style={[styles.iconBig, { borderColor: color, shadowColor: glow, backgroundColor: elementAura(item) }]}>
+              <Text style={{ fontSize: 52 }}>{itemIcon(item)}</Text>
             </View>
 
             <View style={styles.tagRow}>
@@ -116,36 +215,35 @@ export default function ItemDetailModal({
               </Text>
               {item.element !== "none" && (
                 <Text style={[styles.elementTag, { color: ELEMENT_COLOR[item.element], borderColor: ELEMENT_COLOR[item.element] }]}>
-                  {item.element.toUpperCase()}
+                  {item.element.toUpperCase()} AURA
                 </Text>
               )}
-              {item.two_handed && (
-                <Text style={styles.twoHandTag}>2-HANDED</Text>
-              )}
+              {item.two_handed && <Text style={styles.twoHandTag}>2-HANDED</Text>}
             </View>
 
             <Text style={styles.name} testID="item-detail-name">{item.name}</Text>
             <Text style={styles.subtype}>{SLOT_LABEL[item.slot]} · {item.material} · {item.shape}</Text>
             <Text style={styles.lore}>{item.lore}</Text>
 
-          {item.slot !== "consumable" && item.slot !== "upgrade" && (
-            <View style={styles.itemXpBox}>
-              <Text style={styles.itemXpText}>Item XP: {item.upgrade_xp ?? 0} / {item.upgrade_xp_to_next ?? 25}</Text>
-            </View>
-          )}
-          {item.slot === "upgrade" && (
-            <View style={styles.itemXpBox}>
-              <Text style={styles.itemXpText}>Shard XP Value: {item.upgrade_xp_value ?? item.atk ?? 10}</Text>
-            </View>
-          )}
+            {item.slot !== "consumable" && item.slot !== "upgrade" && (
+              <View style={styles.itemXpBox}>
+                <Text style={styles.itemXpText}>Item XP: {item.upgrade_xp ?? 0} / {item.upgrade_xp_to_next ?? 25}</Text>
+              </View>
+            )}
+            {item.slot === "upgrade" && (
+              <View style={styles.itemXpBox}>
+                <Text style={styles.itemXpText}>Shard XP Value: {item.upgrade_xp_value ?? item.atk ?? 10}</Text>
+              </View>
+            )}
 
             {renderStats()}
+            {renderComparison()}
 
             <View style={styles.actions}>
               {item.slot === "consumable" ? (
                 <ActionBtn label="USE" onPress={handleUse} disabled={busy} testID="action-use" />
               ) : item.slot === "upgrade" ? (
-                <Text style={styles.hint}>Open a weapon/armor to infuse shards into it.</Text>
+                <Text style={styles.hint}>Open a weapon or armor piece to infuse shards into it.</Text>
               ) : item.equipped ? (
                 <ActionBtn label="UNEQUIP" variant="secondary" onPress={handleUnequip} disabled={busy} testID="action-unequip" />
               ) : equipSlotChoices.length === 1 ? (
@@ -206,10 +304,10 @@ export default function ItemDetailModal({
                       onPress={() => handleUpgrade(s.id)}
                       disabled={busy}
                     >
-                      <Text style={{ fontSize: 24 }}>🔷</Text>
+                      <Text style={{ fontSize: 24 }}>{itemIcon(s)}</Text>
                       <View style={{ flex: 1, marginLeft: 12 }}>
                         <Text style={[styles.scrollName, { color: RARITY_COLORS[s.rarity] }]}>{s.name}</Text>
-                        <Text style={styles.scrollMeta}>{s.rarity} · lvl {s.level}</Text>
+                        <Text style={styles.scrollMeta}>{s.rarity} · lvl {s.level} · +{s.upgrade_xp_value ?? s.atk ?? 10} XP</Text>
                       </View>
                       <Ionicons name="chevron-forward" color={COLORS.textMuted} size={20} />
                     </TouchableOpacity>
@@ -283,8 +381,7 @@ const styles = StyleSheet.create({
   iconBig: {
     alignSelf: "center", width: 100, height: 100, borderRadius: 24,
     borderWidth: 2, alignItems: "center", justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.04)", shadowOpacity: 1, shadowRadius: 30,
-    elevation: 10, marginTop: 8,
+    shadowOpacity: 1, shadowRadius: 30, elevation: 10, marginTop: 8,
   },
   tagRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 6, marginTop: 14 },
   rarityTag: {
@@ -308,6 +405,25 @@ const styles = StyleSheet.create({
   stat: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, alignItems: "center", minWidth: 56 },
   statValue: { fontSize: 14, fontWeight: "900" },
   statLabel: { color: COLORS.textSecondary, fontSize: 9, letterSpacing: 1, marginTop: 1 },
+  compareBox: { marginTop: 16, backgroundColor: "rgba(255,255,255,0.045)", borderWidth: 1, borderColor: COLORS.border, borderRadius: 16, padding: 12 },
+  compareHeader: { gap: 8 },
+  compareTitle: { color: COLORS.textPrimary, fontSize: 12, fontWeight: "900", letterSpacing: 2 },
+  slotToggleRow: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
+  slotToggle: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  slotToggleActive: { borderColor: COLORS.secondary, backgroundColor: "rgba(0,229,255,0.1)" },
+  slotToggleText: { color: COLORS.textMuted, fontSize: 10, fontWeight: "800" },
+  slotToggleTextActive: { color: COLORS.secondary },
+  compareNames: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 },
+  compareSmall: { color: COLORS.textMuted, fontSize: 9, fontWeight: "900", letterSpacing: 1 },
+  compareName: { color: COLORS.textSecondary, fontSize: 12, fontWeight: "800", marginTop: 2 },
+  deltaGrid: { marginTop: 10, gap: 6 },
+  deltaRow: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(0,0,0,0.18)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 },
+  deltaLabel: { color: COLORS.textPrimary, fontSize: 11, fontWeight: "900", width: 58 },
+  deltaBase: { color: COLORS.textMuted, fontSize: 11, flex: 1 },
+  deltaValue: { fontSize: 12, fontWeight: "900", width: 42, textAlign: "right" },
+  deltaUp: { color: "#68D391" },
+  deltaDown: { color: "#FC8181" },
+  deltaEven: { color: COLORS.textMuted },
   actions: { marginTop: 22, gap: 10 },
   actionBtn: { paddingVertical: 14, borderRadius: 12, alignItems: "center" },
   actionText: { color: "#fff", fontWeight: "800", letterSpacing: 2, fontSize: 12 },

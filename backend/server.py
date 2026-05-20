@@ -36,6 +36,11 @@ SIGIL_CHARGE_MAX = 100
 SIGIL_CHARGE_COST = 10
 SIGIL_CHARGE_REGEN_SECONDS = 90  # +1 Sigil Charge every 90 seconds
 DUPLICATE_ECHO_WINDOW_HOURS = 24
+TALENT_TEST_MODE = True  # Prototype setting: gives tester enough points to exercise the tree.
+TALENT_TEST_TOTAL_POINTS = 60
+TALENT_RESET_TEST_FREE = True
+INVENTORY_MAX = 50
+
 
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
@@ -59,7 +64,7 @@ Slot = Literal[
     "main_hand", "off_hand", "trinket", "ring", "necklace",
     "consumable", "upgrade",
 ]
-Rarity = Literal["common", "rare", "epic", "legendary"]
+Rarity = Literal["common", "uncommon", "rare", "epic", "legendary"]
 
 ELEMENTS = ["none", "fire", "lightning", "ice", "holy", "shadow", "nature"]
 MATERIALS = ["metal", "wood", "leather", "cloth", "stone", "crystal"]
@@ -118,10 +123,18 @@ class EquipIn(BaseModel):
 
 
 class BattleActionIn(BaseModel):
-    # JRPG command choice. The player-facing label is Skill, not Magic.
+    # Combat command choice. The player-facing label is Skill, not Magic.
     action: Literal["weapon", "skill", "ability", "item", "flee"] = "weapon"
     item_id: Optional[str] = None
     skill_id: Optional[str] = None
+
+
+class TalentSpendIn(BaseModel):
+    talent_id: str
+
+
+class TalentResetIn(BaseModel):
+    confirm: bool = True
 
 
 # ---------------- Helpers ----------------
@@ -290,7 +303,7 @@ def xp_to_next(level: int) -> int:
     return 50 + level * 50
 
 
-# ---------------- JRPG class affinity system ----------------
+# ---------------- Class affinity system ----------------
 
 CLASS_META = {
     "infantry": {"label": "Infantry", "icon": "⚔️"},
@@ -314,6 +327,119 @@ ADVANTAGE = {
     "holy": ["demon"],
     "demon": ["holy"],
 }
+
+
+# ---------------- Talent tree prototype ----------------
+# This is intentionally data-driven and small for V1 testing. The user currently
+# receives TALENT_TEST_TOTAL_POINTS so the whole tree can be tested quickly.
+# Later this should become: level-up grants points, reset costs gold, and class
+# branches scale with class proficiency requirements.
+TALENT_TREE = [
+    # Generic trunk. Each node unlocks the next node once the previous node is fully ranked.
+    {"id": "gen_hp_1", "tree": "generic", "name": "Vital Root", "icon": "❤️", "max_rank": 5, "cost": 1, "effects": {"hp_bonus": 10}, "description": "+10 max HP per rank.", "position": 1},
+    {"id": "gen_mana_1", "tree": "generic", "name": "Deep Focus", "icon": "🔷", "max_rank": 5, "cost": 1, "requires": "gen_hp_1", "effects": {"mana_bonus": 5}, "description": "+5 max Mana per rank.", "position": 2},
+    {"id": "gen_def_1", "tree": "generic", "name": "Iron Skin", "icon": "🛡️", "max_rank": 3, "cost": 1, "requires": "gen_mana_1", "effects": {"def_stat": 1}, "description": "+1 DEF per rank.", "position": 3},
+    {"id": "gen_res_1", "tree": "generic", "name": "Steady Mind", "icon": "🔹", "max_rank": 3, "cost": 1, "requires": "gen_def_1", "effects": {"res": 1}, "description": "+1 RES per rank.", "position": 4},
+
+    # Class branches. These are intentionally short for testing, but already support branch/unlock logic.
+    {"id": "infantry_atk_1", "tree": "infantry", "name": "Footwork Drill", "icon": "⚔️", "max_rank": 3, "cost": 1, "requires_class": "infantry", "effects": {"atk": 1}, "description": "+1 ATK per rank while building Infantry style.", "position": 1},
+    {"id": "infantry_guard_1", "tree": "infantry", "name": "Shield Discipline", "icon": "🛡️", "max_rank": 3, "cost": 1, "requires": "infantry_atk_1", "requires_class": "infantry", "effects": {"def_stat": 1}, "description": "+1 DEF per rank.", "position": 2},
+
+    {"id": "lancer_pierce_1", "tree": "lancer", "name": "Piercing Form", "icon": "🔱", "max_rank": 3, "cost": 1, "requires_class": "lancer", "effects": {"atk": 1}, "description": "+1 ATK per rank for polearm builds.", "position": 1},
+    {"id": "lancer_brace_1", "tree": "lancer", "name": "Brace Stance", "icon": "🛡️", "max_rank": 3, "cost": 1, "requires": "lancer_pierce_1", "requires_class": "lancer", "effects": {"def_stat": 1}, "description": "+1 DEF per rank. Helps hold against charges.", "position": 2},
+
+    {"id": "archer_eye_1", "tree": "archer", "name": "Eagle Eye", "icon": "🏹", "max_rank": 3, "cost": 1, "requires_class": "archer", "effects": {"dex": 1}, "description": "+1 DEX per rank.", "position": 1},
+    {"id": "archer_crit_1", "tree": "archer", "name": "True Shot", "icon": "🎯", "max_rank": 3, "cost": 1, "requires": "archer_eye_1", "requires_class": "archer", "effects": {"crit": 1}, "description": "+1 CRIT per rank.", "position": 2},
+
+    {"id": "mage_focus_1", "tree": "mage", "name": "Arcane Focus", "icon": "✨", "max_rank": 3, "cost": 1, "requires_class": "mage", "effects": {"int_stat": 1}, "description": "+1 INT per rank.", "position": 1},
+    {"id": "mage_reserve_1", "tree": "mage", "name": "Mana Reserve", "icon": "🔷", "max_rank": 3, "cost": 1, "requires": "mage_focus_1", "requires_class": "mage", "effects": {"mana_bonus": 8}, "description": "+8 max Mana per rank.", "position": 2},
+
+    {"id": "healer_grace_1", "tree": "healer", "name": "Gentle Grace", "icon": "💚", "max_rank": 3, "cost": 1, "requires_class": "healer", "effects": {"res": 1, "mana_bonus": 2}, "description": "+1 RES and +2 Mana per rank.", "position": 1},
+    {"id": "healer_light_1", "tree": "healer", "name": "Light Touch", "icon": "☀️", "max_rank": 3, "cost": 1, "requires": "healer_grace_1", "requires_class": "healer", "effects": {"int_stat": 1}, "description": "+1 INT per rank for offensive support skills.", "position": 2},
+
+    {"id": "holy_light_1", "tree": "holy", "name": "Sacred Light", "icon": "☀️", "max_rank": 3, "cost": 1, "requires_class": "holy", "effects": {"int_stat": 1}, "description": "+1 INT per rank for holy builds.", "position": 1},
+    {"id": "demon_edge_1", "tree": "demon", "name": "Umbral Edge", "icon": "☠️", "max_rank": 3, "cost": 1, "requires_class": "demon", "effects": {"atk": 1, "int_stat": 1}, "description": "+1 ATK and +1 INT per rank for dark hybrid builds.", "position": 1},
+]
+
+TALENT_BY_ID = {t["id"]: t for t in TALENT_TREE}
+
+
+def talent_points_total(user: dict) -> int:
+    if TALENT_TEST_MODE:
+        return TALENT_TEST_TOTAL_POINTS
+    return max(0, int(user.get("level", 1)) - 1)
+
+
+def talent_points_spent(talents: dict) -> int:
+    total = 0
+    for talent_id, rank in (talents or {}).items():
+        t = TALENT_BY_ID.get(talent_id)
+        if t:
+            total += int(rank or 0) * int(t.get("cost", 1))
+    return total
+
+
+def talent_effect_totals(talents: dict) -> dict:
+    out = {"atk": 0, "int_stat": 0, "def_stat": 0, "res": 0, "dex": 0, "mob": 0, "crit": 0, "luk": 0, "hp_bonus": 0, "mana_bonus": 0}
+    for talent_id, rank in (talents or {}).items():
+        t = TALENT_BY_ID.get(talent_id)
+        if not t:
+            continue
+        for key, val in (t.get("effects") or {}).items():
+            if key in out:
+                out[key] += int(val) * int(rank or 0)
+    return out
+
+
+def build_talent_state(user: dict, class_state: Optional[dict] = None) -> dict:
+    talents = user.get("talents") or {}
+    total = talent_points_total(user)
+    spent = talent_points_spent(talents)
+    scores = (class_state or {}).get("scores") or user.get("class_affinity") or {}
+    nodes = []
+    effects = talent_effect_totals(talents)
+    for t in TALENT_TREE:
+        node = dict(t)
+        rank = int(talents.get(t["id"], 0) or 0)
+        prereq_id = t.get("requires")
+        prereq_met = True
+        prereq_label = ""
+        if prereq_id:
+            prereq = TALENT_BY_ID.get(prereq_id)
+            prereq_rank = int(talents.get(prereq_id, 0) or 0)
+            prereq_max = int((prereq or {}).get("max_rank", 1))
+            prereq_met = prereq_rank >= prereq_max
+            prereq_label = (prereq or {}).get("name", prereq_id)
+        req = t.get("requires_class")
+        pct = int(scores.get(req, 0) or 0) if req else 0
+        enough_points = (total - spent) >= int(t.get("cost", 1))
+        can_rank = rank < int(t.get("max_rank", 1)) and enough_points and prereq_met
+        total_added = {}
+        for key, val in (t.get("effects") or {}).items():
+            total_added[key] = int(val) * rank
+        node.update({
+            "rank": rank,
+            "can_rank": can_rank,
+            "locked": not prereq_met,
+            "locked_text": f"Unlock by maxing {prereq_label}" if not prereq_met else "",
+            "class_affinity": pct,
+            "total_added": total_added,
+            "warning": bool(req and pct < 15),
+            "warning_text": "Low proficiency for this branch" if req and pct < 15 else "",
+        })
+        nodes.append(node)
+    return {
+        "test_mode": TALENT_TEST_MODE,
+        "reset_free": TALENT_RESET_TEST_FREE,
+        "points_total": total,
+        "points_spent": spent,
+        "points_available": max(0, total - spent),
+        "talents": talents,
+        "nodes": nodes,
+        "effects": effects,
+        "reset_cost": 0 if TALENT_RESET_TEST_FREE else max(25, int(user.get("level", 1)) * 20),
+    }
+
 
 def class_chip(key: str) -> dict:
     meta = CLASS_META.get(key, {"label": key.title(), "icon": "◇"})
@@ -370,6 +496,72 @@ def item_effective_vs(item: dict) -> list[str]:
         if e not in out:
             out.append(e)
     return out
+
+
+def item_icon_for(item: dict) -> str:
+    """Small fantasy-style icon for inventory/battle rewards.
+
+    Keep this deterministic and cheap. Frontend also has a fallback, but the
+    backend should stamp scanned/dropped items so scans never crash when the
+    UI asks for an icon.
+    """
+    slot = item.get("slot")
+    shape = item.get("shape")
+    family = item.get("family")
+    element = item.get("element")
+    name = (item.get("name") or "").lower()
+
+    if slot == "upgrade":
+        if "armor" in name:
+            return "🔷"
+        if "weapon" in name:
+            return "🔶"
+        return "💠"
+    if slot == "consumable":
+        if family == "medicine" or "heal" in name or "remedy" in name:
+            return "💖"
+        if family in ("drink", "coffee") or "mana" in name or "tonic" in name:
+            return "🧪"
+        return "🍖"
+    if slot == "main_hand":
+        if shape == "ranged" or any(w in name for w in ("bow", "crossbow")):
+            return "🏹"
+        if any(w in name for w in ("halberd", "pike", "pole")):
+            return "🔱"
+        if shape == "long" or any(w in name for w in ("lance", "spear")):
+            return "🔱"
+        if any(w in name for w in ("staff", "wand", "tome", "rod", "orb")) or (item.get("int_stat", 0) > item.get("atk", 0)):
+            return "🪄"
+        if any(w in name for w in ("dagger", "knife", "stiletto", "dirk")):
+            return "🗡️"
+        if any(w in name for w in ("mace", "hammer", "maul", "cudgel")):
+            return "🔨"
+        if any(w in name for w in ("axe", "cleaver")):
+            return "🪓"
+        return "⚔️"
+    if slot == "off_hand":
+        if any(w in name for w in ("shield", "buckler", "ward")):
+            return "🛡️"
+        return "📘" if item.get("int_stat",0) > item.get("atk",0) else "🗡️"
+    if slot == "head":
+        return "🪖"
+    if slot == "chest":
+        return "🧥" if item.get("int_stat",0) > item.get("def_stat",0) else "🛡️"
+    if slot in ("arm_l", "arm_r"):
+        return "🧤"
+    if slot in ("leg_l", "leg_r"):
+        return "🥾"
+    if slot == "ring":
+        return "💍"
+    if slot == "necklace":
+        return "📿"
+    if slot == "trinket":
+        if element == "holy":
+            return "☀️"
+        if element == "shadow":
+            return "☠️"
+        return "🧿"
+    return "✨"
 
 def equipped_affinity(equipped: list[dict], historical: Optional[dict] = None) -> dict:
     score = {k: 0 for k in CLASS_META.keys()}
@@ -578,6 +770,7 @@ SUBTYPE_TABLE = {
 
 PREFIX_BY_RARITY = {
     "common": ["Worn", "Sturdy", "Rusted", "Plain", "Tarnished"],
+    "uncommon": ["Balanced", "Polished", "Hunter's", "Apprentice", "Tempered"],
     "rare": ["Glimmering", "Keen", "Runed", "Verdant", "Silvered"],
     "epic": ["Stormforged", "Eclipse-Touched", "Voidbound", "Radiant", "Soul-Etched"],
     "legendary": ["Astral", "Dragonsoul", "Celestial", "Mythbound", "Aeonsworn"],
@@ -597,11 +790,13 @@ ELEMENT_PREFIX = {
 def roll_rarity(rng: random.Random, char_level: int, luck_bias: float) -> Rarity:
     roll = rng.random() * 100 - luck_bias * 8
     bonus = min(char_level, 20)
-    if roll < 60 - bonus:
+    if roll < 52 - bonus:
         return "common"
-    elif roll < 86 - bonus * 0.5:
+    elif roll < 76 - bonus * 0.45:
+        return "uncommon"
+    elif roll < 90 - bonus * 0.35:
         return "rare"
-    elif roll < 97:
+    elif roll < 98:
         return "epic"
     return "legendary"
 
@@ -617,8 +812,8 @@ def two_handed_for(slot: str, shape: str, rng: random.Random) -> bool:
 
 
 def gen_stats_for(slot: str, level: int, rarity: Rarity, element: str, traits: dict, rng: random.Random, two_hand: bool) -> dict:
-    """JRPG-first stat generation. Physical weapons mostly ATK; caster gear mostly INT/RES. Mobility is rare and capped."""
-    rar_mult = {"common": 1.0, "rare": 1.45, "epic": 1.95, "legendary": 2.7}[rarity]
+    """Fantasy RPG stat generation. Physical weapons mostly ATK; caster gear mostly INT/RES. Mobility is rare and capped."""
+    rar_mult = {"common": 1.0, "uncommon": 1.22, "rare": 1.45, "epic": 1.95, "legendary": 2.7}[rarity]
     s = {"atk": 0, "int_stat": 0, "def_stat": 0, "res": 0, "dex": 0, "mob": 0,
          "crit": 0, "luk": 0, "hp": 0, "mana": 0, "stamina_restore": 0}
     base = max(1, level)
@@ -830,7 +1025,7 @@ async def ai_flavor(slot: str, rarity: Rarity, level: int, element: str, traits:
 
 
 def calc_price_band(item: dict) -> Tuple[int, int]:
-    rarity_base = {"common": 20, "rare": 90, "epic": 320, "legendary": 1300}[item["rarity"]]
+    rarity_base = {"common": 20, "uncommon": 45, "rare": 90, "epic": 320, "legendary": 1300}.get(item["rarity"], 20)
     power = sum(item.get(k, 0) for k in ("atk", "int_stat", "def_stat", "res", "dex", "mob", "crit", "luk", "hp", "mana"))
     base = rarity_base + item["level"] * 12 + power * 2
     return int(base * 0.5), int(base * 2.0)
@@ -871,6 +1066,7 @@ def new_user_doc(user_id: str, email: str, username: str, password_hash: Optiona
         "battles_won": 0,
         "battles_lost": 0,
         "class_affinity": {},
+        "talents": {},
         "auth_provider": provider,
         "created_at": now_utc(),
     }
@@ -960,6 +1156,8 @@ async def update_avatar(body: AvatarIn, user=Depends(get_current_user)):
 
 @api.get("/auth/me")
 async def me(user=Depends(get_current_user)):
+    user.update(stamina_display_payload(user))
+    user.update(sigil_display_payload(user))
     return user
 
 
@@ -987,6 +1185,12 @@ async def compute_totals(user_id: str) -> Tuple[dict, list]:
         if it["slot"] not in ("consumable", "upgrade"):
             t["hp_bonus"] += it.get("hp", 0)
             t["mana_bonus"] += it.get("mana", 0)
+    # Talent bonuses are character-growth bonuses and should stack with gear.
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if user:
+        for key, val in talent_effect_totals(user.get("talents") or {}).items():
+            if key in t:
+                t[key] += val
     # Initiative should matter but never explode. Clamp the final live value.
     t["mob"] = max(0, min(10, t.get("mob", 0)))
     return t, equipped
@@ -996,11 +1200,22 @@ async def compute_totals(user_id: str) -> Tuple[dict, list]:
 async def get_character(user=Depends(get_current_user)):
     totals, equipped = await compute_totals(user["id"])
     class_state = equipped_affinity(equipped, user.get("class_affinity"))
+    talent_state = build_talent_state(user, class_state)
+    user.update(stamina_display_payload(user))
+    user.update(sigil_display_payload(user))
+    # Display effective vitals after equipment/talent bonuses. Base max_hp/max_mana stay stored
+    # on the user, while this payload shows the actual current character sheet values.
+    display_user = dict(user)
+    display_user["max_hp"] = int(user.get("max_hp", 100)) + int(totals.get("hp_bonus", 0) or 0)
+    display_user["max_mana"] = int(user.get("max_mana", 50)) + int(totals.get("mana_bonus", 0) or 0)
+    display_user["hp"] = min(int(display_user.get("hp", display_user["max_hp"])), display_user["max_hp"])
+    display_user["mana"] = min(int(display_user.get("mana", display_user["max_mana"])), display_user["max_mana"])
     return {
-        "user": user,
+        "user": display_user,
         "equipped": equipped,
         "totals": totals,
         "class_state": class_state,
+        "talent_state": talent_state,
         "xp_to_next": xp_to_next(user["level"]),
     }
 
@@ -1102,6 +1317,10 @@ async def scan(body: ScanIn, user=Depends(get_current_user)):
     if not bc or len(bc) < 4:
         raise HTTPException(400, "Invalid barcode")
 
+    inv_count = await db.items.count_documents({"owner_id": user["id"], "listed": False})
+    if inv_count >= INVENTORY_MAX:
+        raise HTTPException(400, f"Inventory full ({INVENTORY_MAX}/{INVENTORY_MAX}). Clear space before scanning.")
+
     charge = int(user.get("sigil_charge", SIGIL_CHARGE_MAX) or 0)
     if charge < SIGIL_CHARGE_COST:
         raise HTTPException(400, f"The scanner needs {SIGIL_CHARGE_COST} Sigil Charge to transmute again.")
@@ -1123,7 +1342,7 @@ async def scan(body: ScanIn, user=Depends(get_current_user)):
     if recent_duplicate and rng.random() < 0.45:
         # Same-day repeats are useful but less explosive: mostly upgrade materials / echo shards.
         slot = "upgrade"
-        rarity = "common" if rng.random() < 0.82 else "rare"
+        rarity = "common" if rng.random() < 0.70 else "uncommon"
     elif is_upgrade_material(bc) and rng.random() < 0.35:
         slot = "upgrade"
         rarity = roll_rarity(rng, user["level"], traits["uncommonness"] * 0.75)
@@ -1131,7 +1350,7 @@ async def scan(body: ScanIn, user=Depends(get_current_user)):
         slot = family_to_slot(traits, rng)
         rarity = roll_rarity(rng, user["level"], traits["uncommonness"])
 
-    rarity_bias = {"common": 0.55, "rare": 0.72, "epic": 0.88, "legendary": 1.0}[rarity]
+    rarity_bias = {"common": 0.55, "uncommon": 0.64, "rare": 0.72, "epic": 0.88, "legendary": 1.0}[rarity]
     level = max(1, min(user["level"], int(round(user["level"] * rarity_bias * rng.uniform(0.7, 1.0)))))
     two_h = two_handed_for(slot, traits["shape"], rng)
     stats = gen_stats_for(slot, level, rarity, traits["element"], traits, rng, two_h)
@@ -1340,7 +1559,7 @@ async def upgrade_item(body: UpgradeIn, user=Depends(get_current_user)):
         cur_xp -= upgrade_xp_to_next(level)
         level += 1
         leveled = True
-        # JRPG identity: improve what the item already is good at.
+        # Item identity: improve what the item already is good at.
         for k in ("atk", "int_stat", "def_stat", "res", "dex", "crit", "luk", "hp", "mana"):
             v = int(target.get(k, 0) or stat_updates.get(k, 0) or 0)
             if v:
@@ -1653,6 +1872,55 @@ async def ensure_battle_state(user: dict) -> dict:
     )
     return {"enemy": enemy, "turn": "player", "started": False, "user": user}
 
+
+@api.get("/talents")
+async def get_talents(user=Depends(get_current_user)):
+    totals, equipped = await compute_totals(user["id"])
+    class_state = equipped_affinity(equipped, user.get("class_affinity"))
+    return build_talent_state(user, class_state)
+
+
+@api.post("/talents/spend")
+async def spend_talent(body: TalentSpendIn, user=Depends(get_current_user)):
+    talent = TALENT_BY_ID.get(body.talent_id)
+    if not talent:
+        raise HTTPException(404, "Talent not found")
+    talents = dict(user.get("talents") or {})
+    rank = int(talents.get(body.talent_id, 0) or 0)
+    if rank >= int(talent.get("max_rank", 1)):
+        raise HTTPException(400, "Talent is already max rank")
+    total = talent_points_total(user)
+    spent = talent_points_spent(talents)
+    cost = int(talent.get("cost", 1))
+    if total - spent < cost:
+        raise HTTPException(400, "Not enough talent points")
+    talents[body.talent_id] = rank + 1
+    await db.users.update_one({"id": user["id"]}, {"$set": {"talents": talents}})
+    user["talents"] = talents
+    totals, equipped = await compute_totals(user["id"])
+    class_state = equipped_affinity(equipped, user.get("class_affinity"))
+    return build_talent_state(user, class_state)
+
+
+@api.post("/talents/reset")
+async def reset_talents(body: TalentResetIn, user=Depends(get_current_user)):
+    if not body.confirm:
+        raise HTTPException(400, "Reset not confirmed")
+    cost = 0 if TALENT_RESET_TEST_FREE else max(25, int(user.get("level", 1)) * 20)
+    if cost and int(user.get("gold", 0)) < cost:
+        raise HTTPException(400, "Not enough gold to reset talents")
+    update = {"talents": {}}
+    if cost:
+        update["gold"] = int(user.get("gold", 0)) - cost
+    await db.users.update_one({"id": user["id"]}, {"$set": update})
+    user["talents"] = {}
+    if cost:
+        user["gold"] = update["gold"]
+    totals, equipped = await compute_totals(user["id"])
+    class_state = equipped_affinity(equipped, user.get("class_affinity"))
+    return build_talent_state(user, class_state)
+
+
 @api.get("/battle/preview")
 async def battle_preview(user=Depends(get_current_user)):
     state = await ensure_battle_state(user)
@@ -1840,7 +2108,7 @@ async def drop_loot(user_id: str, tier: int) -> dict:
     rng = _seed_rand(fake_bc, "loot")
     slot = family_to_slot(traits, rng)
     rarity = roll_rarity(rng, user["level"], traits["uncommonness"] + 0.2)
-    rar_bias = {"common": 0.6, "rare": 0.75, "epic": 0.9, "legendary": 1.0}[rarity]
+    rar_bias = {"common": 0.6, "uncommon": 0.68, "rare": 0.75, "epic": 0.9, "legendary": 1.0}[rarity]
     level = max(1, min(user["level"], int(round(user["level"] * rar_bias))))
     two_h = two_handed_for(slot, traits["shape"], rng)
     stats = gen_stats_for(slot, level, rarity, traits["element"], traits, rng, two_h)
