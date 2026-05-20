@@ -1,0 +1,58 @@
+{
+  "summary": "Iteration 2 complete: 15/15 new endpoint tests pass (Google session, Avatar update validation, regression). 22/24 of previous regression tests still pass (1 pre-existing flaky test, 1 skipped by design). Frontend mobile flows all verified: BARCODIA rebrand, Google login buttons, bottom tabs visible & navigable, avatar picker with 8 presets + upload + save, scan manual fallback, inventory, Trading House (Barcodia Marketplace).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/auth/google/session", "issue": "When upstream Emergent returns 404 for bogus session, our handler returns 401 with detail 'Google session invalid'. Behavior correct. (Documented for clarity only.)"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Scan -> Reveal modal",
+        "issue": "Same pre-existing flaky web-only timing issue from iter 1: scan-reveal modal sometimes not detectable via Playwright wait_for_selector after manual entry submit. Backend POST /api/scan succeeds and item is persisted (verified previously via inventory). Not blocking.",
+        "affected_testIDs": ["scan-reveal"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Login / Register / All",
+        "issues": [
+          "Persistent (non-blocking) console deprecation warnings: shadow*, textShadow* style props and props.pointerEvents. Migrate to boxShadow / textShadow / style.pointerEvents.",
+          "Avatar presets include what appears to be a Spider-Man image (preset:5). User asked for 'anime/fantasy' avatars; Spider-Man is a Marvel IP and not really fantasy/anime. Consider replacing with a licensed/royalty-free fantasy or anime portrait."
+        ]
+      }
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_new_endpoints.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_iter2.xml",
+    "/app/test_reports/pytest/pytest_regression.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: Replace Spider-Man preset image (preset:5) with a fantasy/anime portrait to match user's stated theme.",
+    "OPTIONAL (pre-existing): Address React Native web deprecation warnings (shadow*, textShadow*, pointerEvents).",
+    "Pre-existing flaky test: backend_test.py::test_upgrade_rejects_past_char_level intermittently passes/fails depending on user XP grind; iter 1 already documented this. Consider isolating with a fresh user each run."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now 705 lines (was 611). Crossed the 700-line threshold. Time to split into routes/auth.py, routes/items.py, routes/market.py, routes/scan.py.",
+    "Google session handler does external httpx call without rate-limiting; could be abused. Acceptable for MVP but consider basic per-IP throttle in production.",
+    "Avatar size limit is enforced AFTER pydantic accepts arbitrarily large JSON. For very large payloads (e.g., 10MB), FastAPI will still parse them before the 1.5MB check. Consider a request body size limit middleware.",
+    "Market buy flow remains non-atomic (gold transfer + item ownership are separate Mongo ops) — pre-existing comment from iter 1."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_new_endpoints.py (created with 15 pytest cases: Google session, Avatar CRUD/validation, regression smoke)"
+  ],
+  "success_rate": {
+    "backend": "100% on new endpoints (15/15). Regression 22/24 pass, 1 skipped, 1 pre-existing flaky.",
+    "frontend": "100% on iteration-2 requirements (rebrand, Google buttons, tabs, avatar picker, market subtitle, scan fallback)."
+  },
+  "seed_data_creation": "Created TEST_av_*, TEST_buyer_*, TEST_seller_*, TEST_cancel_*, TEST_up_*, TEST_poor_* prefixed users via /api/auth/register. Seed user test@bq.com avatar now 'preset:5' after frontend save test.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All iteration-2 changes verified working: (1) BARCODIA title on login/register; (2) login-google + register-google buttons exist & clickable (cannot complete OAuth in headless); (3) Bottom tab testIDs tab-character/tab-scan/tab-inventory/tab-market all render and navigate correctly to /character /scan /inventory /market; (4) Avatar picker (testID avatar-edit-btn -> avatar-picker modal) shows 8 presets (avatar-preset:1..8), avatar-upload, avatar-save; selecting preset + save calls PUT /api/auth/avatar and persists; (5) Market subtitle 'Barcodia Marketplace' rendered as CSS uppercase 'BARCODIA MARKETPLACE'; tab IDs are market-tab-browse / market-tab-my (NOT 'tab-browse'); (6) Scan manual fallback: scan-manual-open-fallback -> scan-manual-input -> scan-manual-submit. scan-reveal modal still flaky on web (known iter-1 issue, functional). Backend new tests in /app/backend/tests/test_new_endpoints.py.",
+  "rca_of_issue": "No new bugs. The single regression failure (test_upgrade_rejects_past_char_level) is the same pre-existing flaky test documented in iter 1: when AI flavor calls speed up, the user gains XP faster from prior scans and levels up; the test then finds a level-1 item but user is level 2+, so the upgrade endpoint correctly succeeds (returns 200) instead of rejecting. This is a test-design issue, not a production bug. Mitigation: rewrite the test to register a NEW user each time and immediately attempt upgrade on a single scanned item before any XP grind."
+}

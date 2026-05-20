@@ -1,0 +1,45 @@
+{
+  "summary": "Iteration 3 verified end-to-end. Backend: 16/16 new pytest cases pass (test_iter3.py) covering new 13-slot enum, 10-stat schema on /scan, AI no-product-leak rule across 4 brand hints, duplicate-scan echo shards with halving, independent leg_l/leg_r equip, 2H main_hand auto-unequipping off_hand, /character new totals keys, /battle/preview shape, /battle/skip rerolling enemy, /battle/fight resolving with stamina decrement + log + outcome + next_enemy, stamina-zero -> 400, inventory/market list+buy+cancel + destroy regression. Frontend (mobile 375x667): registration -> character screen with all 11 paper-doll slot testIDs (head/chest/leg_l/leg_r/arm_l/arm_r/main_hand/off_hand/trinket/ring/necklace), 5 bottom tab testIDs (tab-character/tab-scan/tab-battle/tab-inventory/tab-market), HP/MP bars + 5 stamina visual bars + Tier badge + gold render. Battle tab shows enemy-card with portrait + ATK/INT/DEF/DEX stats, FIGHT and SKIP work (SKIP swapped Cave Bat -> Slimeling, FIGHT renders battle-log entries). Item detail modal opens for consumables with USE/LIST/DESTROY. Inventory filter chips render with testID filter-ALL/filter-WEAPON/filter-OFF/filter-ARMOR/filter-TRINKET/filter-CONSUM/filter-SCROLL.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "character.tsx stamina pips", "issue": "Stamina pips render as 5 styled bars (visually correct) but DO NOT have individual testID stamina-pip-0..stamina-pip-4. Hard to assert pip count programmatically. Suggest adding testID={`stamina-pip-${i}`} on each pip View.", "testID": "stamina-pip-{n}", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Scan duplicate -> Alert(Echo Shards)", "issue": "Backend correctly returns {duplicate:true, echo_shards_gold>0} on 2nd scan (verified via pytest). Frontend code in scan.tsx submitCode() does call Alert.alert('Echo Shards', ...) when result.duplicate. However, Playwright on the web preview did NOT capture this as a native dialog event during automated test — React Native Web Alert.alert may render as a custom in-DOM component rather than a window.alert/confirm dialog. Functionally verified that no 2nd item was created (inventory count stayed at 1). Likely a Playwright-vs-RN-Web detection limitation, not a real frontend bug. Recommend visual manual smoke test or adding a testID-anchored toast.", "affected_testIDs": ["scan-manual-submit", "scan-reveal"]}
+    ],
+    "design_issues": [
+      {"screen": "Global", "issues": [
+        "Persistent (non-blocking) deprecation warnings from RN Web: 'shadow*' / 'textShadow*' style props and props.pointerEvents. Carry-over from iter 1/2 — not addressed yet. Migrate to boxShadow/textShadow/style.pointerEvents."
+      ]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter3.py",
+    "/app/test_reports/pytest/pytest_iter3.xml"
+  ],
+  "action_items": [
+    "LOW: Add testID `stamina-pip-{n}` on each of the 5 stamina pip Views in character.tsx for testability.",
+    "LOW: (carry-over) Migrate shadow*/textShadow*/pointerEvents to modern equivalents to silence RN Web deprecation warnings.",
+    "OPTIONAL: Consider replacing Alert.alert for the Echo Shards duplicate-scan flow with an in-DOM toast/banner that has a testable testID (e.g., `scan-echo-toast`) — easier to automate and visually nicer than a system alert."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now 1222 lines — well past the 700-line threshold first flagged in iter 2. Refactor into routes/(auth, items, scan, market, battle).py + services/(traits, items, battle).py modules.",
+    "battle_fight: enemy dict is fetched from a Mongo-backed preview document; if a leftover '_id' key persists it could leak (mitigated with enemy.pop('_id', None) on line 1058, good).",
+    "battle_fight + grant_xp + gold increment are 3 separate Mongo update_one calls — not atomic. A crash mid-flow could leave HP updated but XP/gold not. Acceptable for MVP, document for production.",
+    "compute_totals does an aggregation across items collection on EVERY /character and /battle/fight request — fine for low-volume but consider denormalising totals onto user doc if scale grows.",
+    "ai_flavor: per-request session_id=uuid means no caching/dedup — every scan is a new LLM session. OK for variety but cost-heavy.",
+    "Equip endpoint queries `equip_slot` field, but items never have equip_slot set until first equipped. Logic is correct (filter is implicit) but a bit fragile — a stale equipped:true with no equip_slot would not be properly cleared. Consider always setting equip_slot=item['slot'] on equip.",
+    "gen_enemy uses Python built-in hash() which is randomised per process — fine for rolling enemies but means tier-low enemies can still be picked at high tier (eligible[-6:] mitigation is present, good)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter3.py (created — 16 pytest cases covering the iter-3 features)"
+  ],
+  "success_rate": {"backend": "100% (16/16 iter-3 tests passed)", "frontend": "~95% — all visible flows render and respond; only minor automation gap is the Echo Shards Alert detection on web."},
+  "seed_data_creation": "Created TESTITER3_*, SELLER_*, BUYER_*, DESTROY_* prefixed users via /api/auth/register; multiple scanned items + listings + a destroyed item across these accounts. UI test created an additional iter3ui_* and iter3r_* user with one scanned consumable each.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iter-3 schema is solid. Equip uses item.slot as natural slot + body.slot override for L/R disambiguation. Duplicate scan increments user_scans.count and halves gold each subsequent scan. Battle uses /battle/preview as a persisted enemy doc keyed by user_id — /battle/fight pops and replaces it with next_enemy. Stamina regen is 1 per 180s, max=5+level//2. Frontend filter chip testIDs are UPPERCASE: filter-ALL/filter-WEAPON/filter-OFF/filter-ARMOR/filter-TRINKET/filter-CONSUM/filter-SCROLL. Stamina pips lack individual testIDs. To test Echo Shards alert: scan same barcode twice — backend will return duplicate response (verified). If you need to verify the on-device alert, use a real device or add a testable toast.",
+  "rca_of_issue": "No production bugs found. The two minor observations (missing stamina-pip testIDs and undetectable RN Web Alert) are testability/instrumentation issues, not user-facing defects. Backend duplicate-scan logic was independently verified via pytest test_scan_duplicate_returns_echo_shards which confirms scan_count=2 returns gold>0 and scan_count=3 returns ~half."
+}

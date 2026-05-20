@@ -1,0 +1,128 @@
+{
+  "theme": "Dark",
+  "archetype": "5 (Jewel & Luxury) with Fantasy Anime aesthetic",
+  "color_palette": {
+    "background": "#0A0C10",
+    "surface": "#1A1D24",
+    "surface_glass": "rgba(26, 29, 36, 0.75)",
+    "primary": "#8A2BE2",
+    "secondary": "#00E5FF",
+    "accent": "#FFD700",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#A0AEC0",
+    "rarity_common": "#718096",
+    "rarity_rare": "#3182CE",
+    "rarity_epic": "#805AD5",
+    "rarity_legendary": "#D69E2E",
+    "danger": "#E53E3E",
+    "success": "#38A169"
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Outfit, sans-serif",
+      "body": "Inter, sans-serif",
+      "monospace": "Roboto Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-4xl font-black tracking-tighter text-white",
+      "h2": "text-2xl font-bold tracking-tight text-white",
+      "h3": "text-xl font-bold text-white",
+      "body": "text-base text-text_secondary",
+      "caption": "text-xs tracking-[0.2em] uppercase text-text_secondary font-bold"
+    }
+  },
+  "spacing_and_layout": {
+    "screen_padding": "p-6",
+    "card_padding": "p-5",
+    "gap": "gap-4",
+    "radius": {
+      "sm": "rounded-md",
+      "md": "rounded-xl",
+      "lg": "rounded-2xl",
+      "full": "rounded-full"
+    }
+  },
+  "component_patterns": {
+    "buttons": "bg-primary text-white rounded-xl py-4 px-6 font-bold shadow-[0_0_15px_rgba(138,43,226,0.4)] active:opacity-80 flex flex-row justify-center items-center",
+    "buttons_secondary": "bg-transparent border border-primary/50 text-primary rounded-xl py-4 px-6 font-bold active:opacity-80 flex flex-row justify-center items-center",
+    "buttons_danger": "bg-danger text-white rounded-xl py-4 px-6 font-bold active:opacity-80 flex flex-row justify-center items-center",
+    "cards": "bg-surface_glass border border-white/10 rounded-2xl overflow-hidden",
+    "bottom_nav": "bg-background border-t border-white/10 py-3 px-6 flex flex-row justify-between items-center",
+    "inventory_slot": "aspect-square rounded-xl border-2 bg-surface justify-center items-center overflow-hidden relative",
+    "progress_bar": "h-2.5 rounded-full bg-surface overflow-hidden w-full",
+    "progress_fill": "h-full rounded-full bg-primary",
+    "badge": "px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider"
+  },
+  "screen_blueprints": {
+    "login": {
+      "layout": "Fullscreen image background (`background_mystical_forest`). Dark overlay gradient at the bottom. Glassmorphism card in center.",
+      "elements": "Glowing game title. Input fields with white/10 background, white text, and primary border on focus. Solid primary 'Enter Realm' button."
+    },
+    "character_profile": {
+      "layout": "Scrollable vertical list.",
+      "elements": "Top section: Large Avatar image with glowing circular frame, level badge overlay, and HP/Mana progress bars. Bottom section: Bento grid for equipped gear slots (Weapon, Armor, Accessory, Consumable). Floating glass panels for detailed stats (ATK, DEF, MAG)."
+    },
+    "scanner": {
+      "layout": "Full screen Camera view.",
+      "elements": "Overlay the `scanner_frame` image covering the edges. Add a glowing cyan scanning line moving up and down. A subtle 'Scan Barcode' prompt at the top. On scan success, a Bottom Sheet pops up revealing the generated item with its rarity."
+    },
+    "inventory": {
+      "layout": "Vertical FlatList with numColumns=4.",
+      "elements": "Top section: Filter chips (All, Weapons, Armor, Consumables). Grid items: use `inventory_slot` pattern, color-code borders by rarity. Display item count badge. Tapping an item opens `item_detail` modal."
+    },
+    "item_detail": {
+      "layout": "Bottom sheet or centered Modal with blur backdrop.",
+      "elements": "Large centered item image. Rarity badge and Name at the top. Stat deltas (e.g., ATK +15, Level 5). Description/Lore text. Action buttons: Equip, Upgrade, List on Market, Destroy (danger button)."
+    },
+    "upgrade": {
+      "layout": "Vertical scroll.",
+      "elements": "Dual slot visual: Main item on left, Upgrade scroll/material on right, connected by a glowing '+' icon. 'Upgrade' CTA button with glow effect. Display success chance (%) and current vs next level stats (cap = character level)."
+    },
+    "trading_house": {
+      "layout": "Header background `trading_house_bg`. FlatList of items for sale.",
+      "elements": "Search bar and Filter at the top. 'Post Listing' CTA button. Listing modal includes min/max price guardrails. Item cards display seller name, item icon, rarity border, and price."
+    }
+  },
+  "image_urls": {
+    "background_mystical_forest": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/4cd22e14-0bbb-4fd7-97e6-a8b09d4a1375/images/286b95e6a3cfd9b873ad0a892852fa5f56b847eb84ddd75efae95ec28362ad60.png",
+      "description": "Background for Login and ambient app screens",
+      "category": "background"
+    },
+    "scanner_frame": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/4cd22e14-0bbb-4fd7-97e6-a8b09d4a1375/images/d518999048ee516236ec611bbd8b385b50018aeaa2a8caccd5c46319b2aa9753.png",
+      "description": "Overlay for the Barcode Scanner screen",
+      "category": "ui_element"
+    },
+    "trading_house_bg": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/4cd22e14-0bbb-4fd7-97e6-a8b09d4a1375/images/2f5bc6f26f0e565df865d7f848c51eccf30b7e5d0d2d93448d170d4756f7f32f.png",
+      "description": "Header background for the Trading House screen",
+      "category": "background"
+    },
+    "item_epic_sword": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/4cd22e14-0bbb-4fd7-97e6-a8b09d4a1375/images/4e8ffa69f058d0bd45c79a5f74b4bc201e0b87c4f4da5e54343bdaf535aaabfe.png",
+      "description": "Example Epic Item icon",
+      "category": "item"
+    },
+    "avatar_placeholder_1": {
+      "url": "https://images.unsplash.com/photo-1653368653487-f55b96d90853?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTZ8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwYW5pbWUlMjBycGclMjBjaGFyYWN0ZXIlMjBwb3J0cmFpdHxlbnwwfHx8fDE3NzkxMjQ4Njl8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Default Character Avatar",
+      "category": "avatar"
+    },
+    "avatar_placeholder_2": {
+      "url": "https://images.unsplash.com/photo-1660958822033-123215ae35fe?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTZ8MHwxfHNlYXJjaHw0fHxmYW50YXN5JTIwYW5pbWUlMjBycGclMjBjaGFyYWN0ZXIlMjBwb3J0cmFpdHxlbnwwfHx8fDE3NzkxMjQ4Njl8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Secondary Character Avatar",
+      "category": "avatar"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Use standard React Native / Expo components (View, Text, Image, ImageBackground, TouchableOpacity, ScrollView, FlatList).",
+    "Use NativeWind for styling. The tailwind classes provided should be mapped to the `className` props of your components.",
+    "Implement the 'Dark Fantasy Anime' aesthetic using Archetype 5: Jewel & Luxury. Apply the dark backgrounds and vibrant rarity colors to borders/shadows.",
+    "For the scanner screen, use `expo-camera` or `react-native-vision-camera`. Position the `scanner_frame` image absolutely over the camera view with pointerEvents='none'.",
+    "Use translucent backgrounds with subtle borders (simulating glassmorphism) for cards and modals to let the rich background imagery show through.",
+    "Implement the bottom tab navigation with the following tabs: Character, Scan, Inventory, Market.",
+    "Ensure all interactive and key informational elements have `data-testid` props for automated testing.",
+    "Do NOT use placeholder URLs (like via.placeholder.com). Use the provided image URLs as fallbacks and backgrounds."
+  ]
+}
