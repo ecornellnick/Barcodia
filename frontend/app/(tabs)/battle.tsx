@@ -128,8 +128,7 @@ export default function Battle() {
     return () => clearInterval(t);
   }, []);
 
-  const loadPreview = useCallback(async () => {
-    const r = await api.battlePreview();
+  const applyPreviewPayload = useCallback((r: any, forcedMode?: "quick" | "adventure") => {
     setEnemy(r.enemy);
     setStamina(r.stamina);
     setStamMax(r.stamina_max);
@@ -140,11 +139,16 @@ export default function Battle() {
     setTotals(r.totals);
     setSkills(r.skills ?? []);
     setChangeEnemySeconds(r.change_enemy_seconds ?? 0);
-    setBattleMode(r.mode ?? "quick");
-    setActiveNode(r.adventure_node ?? null);
+    setBattleMode(forcedMode ?? r.mode ?? "quick");
+    setActiveNode(r.adventure_node ?? r.node ?? null);
     setOutcome(null);
     setMode("fight");
   }, []);
+
+  const loadPreview = useCallback(async () => {
+    const r = await api.battlePreview();
+    applyPreviewPayload(r, "quick");
+  }, [applyPreviewPayload]);
 
   const startQuick = async () => {
     setBusy(true);
@@ -162,8 +166,8 @@ export default function Battle() {
     setBusy(true);
     try {
       setVisibleLog([]);
-      await api.adventureStart(node);
-      await loadPreview();
+      const r = await api.adventureStart(node);
+      applyPreviewPayload(r as any, "adventure");
     } catch (e: any) {
       Alert.alert("Adventure unavailable", e.message ?? "Try again later.");
     } finally {
@@ -281,7 +285,7 @@ export default function Battle() {
     setSkillMenuOpen(false);
     setItemMenuOpen(false);
     try {
-      const r = await api.battleFight(action, item?.id, skill?.id);
+      const r = await api.battleFight(action, item?.id, skill?.id, battleMode === "adventure" ? "adventure" : "quick");
       await syncFromResponse(r);
     } catch (e: any) {
       Alert.alert("Battle failed", e.message ?? "Try again");
@@ -364,16 +368,18 @@ export default function Battle() {
     // Percent coordinates are centered on the actual baked node circles in whisperwood-map.png.
     // Keep the visual highlight tightly around the number circle only; tap targets are larger and invisible.
     const nodeZones: Record<number, { x: number; y: number; tapSize?: number; ringSize?: number }> = {
-      1: { x: 37.2, y: 4.6, tapSize: 14, ringSize: 42 },
-      2: { x: 73.6, y: 11.5, tapSize: 14, ringSize: 42 },
-      3: { x: 46.9, y: 20.1, tapSize: 14, ringSize: 42 },
-      4: { x: 79.3, y: 29.1, tapSize: 14, ringSize: 42 },
-      5: { x: 54.8, y: 41.9, tapSize: 17, ringSize: 54 },
-      6: { x: 31.6, y: 54.1, tapSize: 14, ringSize: 42 },
-      7: { x: 74.7, y: 64.6, tapSize: 14, ringSize: 42 },
-      8: { x: 41.1, y: 73.8, tapSize: 14, ringSize: 42 },
-      9: { x: 82.1, y: 81.1, tapSize: 14, ringSize: 42 },
-      10: { x: 51.7, y: 92.0, tapSize: 18, ringSize: 62 },
+      // Coordinates are centered on the baked node circles in whisperwood-map.png.
+      // The ring is visual-only and tight around the number circle; tap zones are larger/invisible.
+      1: { x: 40.1, y: 4.3, tapSize: 18, ringSize: 44 },
+      2: { x: 80.3, y: 13.9, tapSize: 18, ringSize: 44 },
+      3: { x: 48.3, y: 21.0, tapSize: 18, ringSize: 44 },
+      4: { x: 85.4, y: 33.4, tapSize: 18, ringSize: 44 },
+      5: { x: 58.9, y: 42.7, tapSize: 20, ringSize: 60 },
+      6: { x: 35.5, y: 56.5, tapSize: 18, ringSize: 44 },
+      7: { x: 78.3, y: 64.4, tapSize: 18, ringSize: 44 },
+      8: { x: 46.7, y: 75.4, tapSize: 18, ringSize: 44 },
+      9: { x: 89.6, y: 83.5, tapSize: 18, ringSize: 44 },
+      10: { x: 61.5, y: 92.7, tapSize: 22, ringSize: 72 },
     };
 
     return (

@@ -43,6 +43,7 @@ export type User = {
 };
 
 export type Listing = { id: string; item: Item; seller_id: string; seller_name: string; price: number; min_price: number; max_price: number };
+export type StoreItem = Partial<Item> & { id: string; name: string; item_type?: string; gold_cost: number; description?: string; image?: string; image_url?: string; enabled?: boolean; can_appear_in_store?: boolean };
 export type Totals = { atk: number; int_stat: number; def_stat: number; res: number; dex: number; mob: number; crit: number; luk: number; hp_bonus: number; mana_bonus: number };
 export type Enemy = { id: string; name: string; archetype: string; class_tags?: ClassKey[]; class_chips?: ClassChip[]; portrait: string; tier: number; elite: boolean; hp: number; max_hp: number; atk: number; int_stat: number; def_stat: number; res: number; dex: number; mob: number; crit: number };
 export type BattleLog = { side: "player" | "enemy"; kind: "attack" | "skill" | "item" | "flee" | "miss"; dmg: number; crit?: boolean; effective?: boolean; msg: string };
@@ -88,13 +89,15 @@ export const api = {
   upgrade: (target_item_id: string, scroll_item_id: string) => request<{ ok: boolean; item: Item; xp_added?: number; leveled?: boolean }>("/items/upgrade", { method: "POST", body: { target_item_id, scroll_item_id } }),
   priceBand: (id: string) => request<{ min_price: number; max_price: number }>(`/market/price-band/${id}`),
   listItem: (item_id: string, price: number) => request<Listing>("/market/list", { method: "POST", body: { item_id, price } }),
+  storeGold: () => request<{ items: StoreItem[]; gold: number; inventory_max: number }>("/store/gold"),
+  buyStoreGold: (id: string) => request<{ ok: boolean; item: Item; gold_spent: number; gold: number }>(`/store/gold/buy/${id}`, { method: "POST", body: { quantity: 1 } }),
   listings: () => request<Listing[]>("/market/listings"),
   cancelListing: (id: string) => request<{ ok: boolean }>(`/market/cancel/${id}`, { method: "POST" }),
   buyListing: (id: string) => request<{ ok: boolean }>(`/market/buy/${id}`, { method: "POST" }),
   battlePreview: () => request<{ enemy: Enemy; stamina: number; stamina_max: number; stamina_next_seconds?: number; stamina_regen_seconds?: number; sigil_charge?: number; sigil_charge_max?: number; sigil_next_seconds?: number; sigil_regen_seconds?: number; change_enemy_seconds?: number; change_enemy_ready?: boolean; difficulty_tier: number; class_state: ClassState; main_weapon: Item | null; totals: Totals; skills: Skill[]; turn: string; battle_active: boolean; mode?: string; adventure_node?: number; adventure_tier?: number }>("/battle/preview"),
   battleSkip: () => request<{ enemy: Enemy; turn: string; change_enemy_seconds?: number; change_enemy_ready?: boolean }>("/battle/skip", { method: "POST" }),
-  battleFight: (action: "weapon" | "skill" | "item" | "flee" = "weapon", item_id?: string, skill_id?: string) =>
-    request<{ resolved: boolean; win: boolean; escaped?: boolean; log: BattleLog[]; enemy: Enemy; rewards: { xp: number; gold: number; item: Item | null }; user: User; next_enemy: Enemy; class_state?: ClassState; main_weapon?: Item | null; skills?: Skill[]; turn?: string }>("/battle/fight", { method: "POST", body: { action, item_id, skill_id } }),
+  battleFight: (action: "weapon" | "skill" | "item" | "flee" = "weapon", item_id?: string, skill_id?: string, mode?: "quick" | "adventure") =>
+    request<{ resolved: boolean; win: boolean; escaped?: boolean; log: BattleLog[]; enemy: Enemy; rewards: { xp: number; gold: number; item: Item | null }; user: User; next_enemy: Enemy; class_state?: ClassState; main_weapon?: Item | null; skills?: Skill[]; turn?: string; mode?: string; adventure_node?: number; adventure_tier?: number }>("/battle/fight", { method: "POST", body: { action, item_id, skill_id, mode } }),
 };
 
 export const CLASS_META: Record<string, ClassChip> = {
@@ -129,13 +132,16 @@ export const STAT_META: { key: keyof Item & string; label: string; color: string
   { key: "hp", label: "HP", color: "#38A169" }, { key: "mana", label: "Mana", color: "#3182CE" }, { key: "stamina_restore", label: "STA", color: "#ECC94B" }, { key: "upgrade_xp_value", label: "XP", color: "#B794F4" },
 ];
 
+
 export function itemPrimaryPower(item: Partial<Item>): number {
   return Math.max(0, Number(item.atk || 0), Number(item.int_stat || 0));
 }
+
 export function itemDefensePower(item: Partial<Item>): number {
   return Math.max(0, Number(item.def_stat || 0) + Math.floor(Number(item.res || 0) * 0.75));
 }
+
 export function itemStatTotal(item: Partial<Item>): number {
-  return ["atk","int_stat","def_stat","res","dex","mob","crit","luk","hp","mana","stamina_restore","upgrade_xp_value"]
+  return ["atk", "int_stat", "def_stat", "res", "dex", "mob", "crit", "luk", "hp", "mana", "stamina_restore", "upgrade_xp_value"]
     .reduce((sum, key) => sum + Math.max(0, Number((item as any)[key] || 0)), 0);
 }
