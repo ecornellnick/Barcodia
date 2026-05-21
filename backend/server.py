@@ -40,6 +40,9 @@ TALENT_TEST_MODE = True  # Prototype setting: gives tester enough points to exer
 TALENT_TEST_TOTAL_POINTS = 60
 TALENT_RESET_TEST_FREE = True
 INVENTORY_MAX = 50
+PREMIUM_CURRENCY_KEY = "aether_gems"
+PREMIUM_CURRENCY_NAME = "Aether Gems"
+DAILY_COMPLETE_GEM_REWARD = 5
 
 
 client = AsyncIOMotorClient(MONGO_URL)
@@ -64,7 +67,7 @@ Slot = Literal[
     "main_hand", "off_hand", "trinket", "ring", "necklace",
     "consumable", "upgrade",
 ]
-Rarity = Literal["common", "uncommon", "rare", "epic", "legendary"]
+Rarity = Literal["common", "rare", "epic", "legendary"]
 
 ELEMENTS = ["none", "fire", "lightning", "ice", "holy", "shadow", "nature"]
 MATERIALS = ["metal", "wood", "leather", "cloth", "stone", "crystal"]
@@ -123,7 +126,7 @@ class EquipIn(BaseModel):
 
 
 class BattleActionIn(BaseModel):
-    # Combat command choice. The player-facing label is Skill, not Magic.
+    # RPG command choice. The player-facing label is Skill, not Magic.
     action: Literal["weapon", "skill", "ability", "item", "flee"] = "weapon"
     item_id: Optional[str] = None
     skill_id: Optional[str] = None
@@ -303,7 +306,7 @@ def xp_to_next(level: int) -> int:
     return 50 + level * 50
 
 
-# ---------------- Class affinity system ----------------
+# ---------------- RPG class affinity system ----------------
 
 CLASS_META = {
     "infantry": {"label": "Infantry", "icon": "⚔️"},
@@ -318,6 +321,50 @@ CLASS_META = {
     "holy": {"label": "Holy", "icon": "☀️"},
     "demon": {"label": "Demon", "icon": "☠️"},
 }
+
+
+def enemy_portrait_asset(monster_id: str = "", name: str = "", tags: Optional[list] = None, kind: str = "") -> str:
+    """Return a bundled portrait asset that matches the enemy name/archetype.
+
+    Important: this function should never fall back to slime for humanoid enemies.
+    Slime art should only be used for actual slime/spore-type monsters.
+    """
+    text = f"{monster_id} {name} {kind}".lower()
+    tags = [str(t).lower() for t in (tags or [])]
+
+    if "boss" in kind or "thornwarden" in text or "elder" in text:
+        return "asset:enemy_boss_thorn"
+    if "tree" in text or "treant" in text or "root" in text or "thorn" in text or "hollow" in text:
+        return "asset:enemy_tree"
+    if "bat" in text or "flier" in tags:
+        return "asset:enemy_bat"
+    if "wolf" in text or "hound" in text:
+        return "asset:enemy_wolf" if "hell" not in text else "asset:enemy_hell_hound"
+    if "skeleton" in text or "bone" in text:
+        return "asset:enemy_skeleton"
+    if "mage" in text or "wisp" in text or "spirit" in text:
+        return "asset:enemy_dark_mage" if "dark" in text or "mage" in text else "asset:enemy_wisp"
+    if "knight" in text or "armored" in text or "guard" in text:
+        return "asset:enemy_knight"
+    if "orc" in text or "berserker" in text:
+        return "asset:enemy_orc"
+    if "goblin" in text or "imp" in text:
+        return "asset:enemy_goblin"
+    if "bandit" in text or "archer" in text or "assassin" in text or "rogue" in text or "shadow" in text:
+        return "asset:enemy_shadow_assassin"
+    if "ice" in text or "golem" in text or "crystal" in text:
+        return "asset:enemy_ice_golem"
+    if "wyvern" in text or "dragon" in text:
+        return "asset:enemy_wyvern"
+    if "red slime" in text or "ember slime" in text:
+        return "asset:enemy_red_slime"
+    if "slime" in text or "slimeling" in text or "spore" in text:
+        return "asset:enemy_slime"
+    if "demon" in tags:
+        return "asset:enemy_dark_mage"
+    if "assassin" in tags or "archer" in tags:
+        return "asset:enemy_shadow_assassin"
+    return "asset:enemy_goblin"
 
 ADVANTAGE = {
     "infantry": ["lancer"],
@@ -499,7 +546,7 @@ def item_effective_vs(item: dict) -> list[str]:
 
 
 def item_icon_for(item: dict) -> str:
-    """Small fantasy-style icon for inventory/battle rewards.
+    """Small RPG-style icon for inventory/battle rewards.
 
     Keep this deterministic and cheap. Frontend also has a fallback, but the
     backend should stamp scanned/dropped items so scans never crash when the
@@ -526,18 +573,12 @@ def item_icon_for(item: dict) -> str:
     if slot == "main_hand":
         if shape == "ranged" or any(w in name for w in ("bow", "crossbow")):
             return "🏹"
-        if any(w in name for w in ("halberd", "pike", "pole")):
+        if shape == "long" or any(w in name for w in ("lance", "spear", "halberd", "pike")):
             return "🔱"
-        if shape == "long" or any(w in name for w in ("lance", "spear")):
-            return "🔱"
-        if any(w in name for w in ("staff", "wand", "tome", "rod", "orb")) or (item.get("int_stat", 0) > item.get("atk", 0)):
+        if any(w in name for w in ("staff", "wand", "tome", "rod")) or (item.get("int_stat", 0) > item.get("atk", 0)):
             return "🪄"
         if any(w in name for w in ("dagger", "knife", "stiletto", "dirk")):
             return "🗡️"
-        if any(w in name for w in ("mace", "hammer", "maul", "cudgel")):
-            return "🔨"
-        if any(w in name for w in ("axe", "cleaver")):
-            return "🪓"
         return "⚔️"
     if slot == "off_hand":
         if any(w in name for w in ("shield", "buckler", "ward")):
@@ -547,9 +588,9 @@ def item_icon_for(item: dict) -> str:
         return "🪖"
     if slot == "chest":
         return "🧥" if item.get("int_stat",0) > item.get("def_stat",0) else "🛡️"
-    if slot in ("arm_l", "arm_r"):
+    if slot in ("left_arm", "right_arm"):
         return "🧤"
-    if slot in ("leg_l", "leg_r"):
+    if slot in ("left_leg", "right_leg"):
         return "🥾"
     if slot == "ring":
         return "💍"
@@ -770,7 +811,6 @@ SUBTYPE_TABLE = {
 
 PREFIX_BY_RARITY = {
     "common": ["Worn", "Sturdy", "Rusted", "Plain", "Tarnished"],
-    "uncommon": ["Balanced", "Polished", "Hunter's", "Apprentice", "Tempered"],
     "rare": ["Glimmering", "Keen", "Runed", "Verdant", "Silvered"],
     "epic": ["Stormforged", "Eclipse-Touched", "Voidbound", "Radiant", "Soul-Etched"],
     "legendary": ["Astral", "Dragonsoul", "Celestial", "Mythbound", "Aeonsworn"],
@@ -790,13 +830,11 @@ ELEMENT_PREFIX = {
 def roll_rarity(rng: random.Random, char_level: int, luck_bias: float) -> Rarity:
     roll = rng.random() * 100 - luck_bias * 8
     bonus = min(char_level, 20)
-    if roll < 52 - bonus:
+    if roll < 60 - bonus:
         return "common"
-    elif roll < 76 - bonus * 0.45:
-        return "uncommon"
-    elif roll < 90 - bonus * 0.35:
+    elif roll < 86 - bonus * 0.5:
         return "rare"
-    elif roll < 98:
+    elif roll < 97:
         return "epic"
     return "legendary"
 
@@ -812,8 +850,8 @@ def two_handed_for(slot: str, shape: str, rng: random.Random) -> bool:
 
 
 def gen_stats_for(slot: str, level: int, rarity: Rarity, element: str, traits: dict, rng: random.Random, two_hand: bool) -> dict:
-    """Fantasy RPG stat generation. Physical weapons mostly ATK; caster gear mostly INT/RES. Mobility is rare and capped."""
-    rar_mult = {"common": 1.0, "uncommon": 1.22, "rare": 1.45, "epic": 1.95, "legendary": 2.7}[rarity]
+    """RPG-first stat generation. Physical weapons mostly ATK; caster gear mostly INT/RES. Mobility is rare and capped."""
+    rar_mult = {"common": 1.0, "rare": 1.45, "epic": 1.95, "legendary": 2.7}[rarity]
     s = {"atk": 0, "int_stat": 0, "def_stat": 0, "res": 0, "dex": 0, "mob": 0,
          "crit": 0, "luk": 0, "hp": 0, "mana": 0, "stamina_restore": 0}
     base = max(1, level)
@@ -1025,7 +1063,7 @@ async def ai_flavor(slot: str, rarity: Rarity, level: int, element: str, traits:
 
 
 def calc_price_band(item: dict) -> Tuple[int, int]:
-    rarity_base = {"common": 20, "uncommon": 45, "rare": 90, "epic": 320, "legendary": 1300}.get(item["rarity"], 20)
+    rarity_base = {"common": 20, "rare": 90, "epic": 320, "legendary": 1300}[item["rarity"]]
     power = sum(item.get(k, 0) for k in ("atk", "int_stat", "def_stat", "res", "dex", "mob", "crit", "luk", "hp", "mana"))
     base = rarity_base + item["level"] * 12 + power * 2
     return int(base * 0.5), int(base * 2.0)
@@ -1034,6 +1072,195 @@ def calc_price_band(item: dict) -> Tuple[int, int]:
 def stamina_max_for_user(u: dict) -> int:
     return stamina_max(u["level"])
 
+
+
+# ---------------- Daily goals / adventure progression ----------------
+
+DAILY_GOAL_DEFS = [
+    {"key": "quick_wins", "label": "Win 5 Quick Hunts", "target": 5, "reward_gold": 35, "reward_xp": 10},
+    {"key": "scans", "label": "Scan 3 items", "target": 3, "reward_gold": 25, "reward_xp": 8},
+    {"key": "destroy", "label": "Destroy 1 item", "target": 1, "reward_gold": 20, "reward_xp": 5},
+    {"key": "use_item", "label": "Use 1 consumable", "target": 1, "reward_gold": 20, "reward_xp": 5},
+    {"key": "adventure_win", "label": "Win 1 Adventure node", "target": 1, "reward_gold": 40, "reward_xp": 12},
+]
+
+ADVENTURE_BIOMES = {
+    1: {
+        "name": "Whisperwood Forest",
+        "subtitle": "A glowing trail curls around ancient roots.",
+        "biome": "forest",
+        "background": "forest_sigil_path",
+        "accent": "#68D391",
+        "nodes": [
+            {"node": 1, "kind": "normal", "name": "Moss Trail", "enemy": "Green Slimeling", "x": 24, "y": 90},
+            {"node": 2, "kind": "normal", "name": "Fern Bend", "enemy": "Cave Bat", "x": 62, "y": 165},
+            {"node": 3, "kind": "normal", "name": "Root Steps", "enemy": "Briar Rat", "x": 38, "y": 250},
+            {"node": 4, "kind": "elite", "name": "Old Hollow", "enemy": "Thorn Imp", "x": 70, "y": 335},
+            {"node": 5, "kind": "miniboss", "name": "Scary Tree", "enemy": "Hollowroot Watcher", "x": 48, "y": 430},
+            {"node": 6, "kind": "normal", "name": "Lantern Moss", "enemy": "Forest Wisp", "x": 24, "y": 520},
+            {"node": 7, "kind": "elite", "name": "Wolf Gate", "enemy": "Moonfang Wolf", "x": 68, "y": 605},
+            {"node": 8, "kind": "normal", "name": "Bluecap Ring", "enemy": "Sporeling", "x": 36, "y": 700},
+            {"node": 9, "kind": "elite", "name": "Thorn Bridge", "enemy": "Briar Knight", "x": 66, "y": 785},
+            {"node": 10, "kind": "boss", "name": "Boss Clearing", "enemy": "Elder Thornwarden", "x": 50, "y": 890},
+        ],
+    }
+}
+
+def today_key() -> str:
+    return now_utc().date().isoformat()
+
+def daily_goal_template() -> dict:
+    return {
+        "date": today_key(),
+        "claimed_all": False,
+        "premium_currency_key": PREMIUM_CURRENCY_KEY,
+        "premium_currency_name": PREMIUM_CURRENCY_NAME,
+        "complete_reward": DAILY_COMPLETE_GEM_REWARD,
+        "progress": {g["key"]: 0 for g in DAILY_GOAL_DEFS},
+        "claimed": {g["key"]: False for g in DAILY_GOAL_DEFS},
+    }
+
+def normalize_daily_goals(user: dict) -> dict:
+    dg = user.get("daily_goals") or {}
+    if dg.get("date") != today_key():
+        return daily_goal_template()
+    tmpl = daily_goal_template()
+    tmpl.update(dg)
+    tmpl["progress"] = {**daily_goal_template()["progress"], **(dg.get("progress") or {})}
+    tmpl["claimed"] = {**daily_goal_template()["claimed"], **(dg.get("claimed") or {})}
+    tmpl["premium_currency_key"] = PREMIUM_CURRENCY_KEY
+    tmpl["premium_currency_name"] = PREMIUM_CURRENCY_NAME
+    tmpl["complete_reward"] = DAILY_COMPLETE_GEM_REWARD
+    return tmpl
+
+def build_daily_payload(user: dict) -> dict:
+    dg = normalize_daily_goals(user)
+    goals = []
+    all_done = True
+    for g in DAILY_GOAL_DEFS:
+        cur = int(dg["progress"].get(g["key"], 0) or 0)
+        target = int(g["target"])
+        done = cur >= target
+        all_done = all_done and done
+        goals.append({**g, "progress": min(cur, target), "done": done, "claimed": bool(dg["claimed"].get(g["key"], False))})
+    return {"date": dg["date"], "goals": goals, "all_done": all_done, "claimed_all": bool(dg.get("claimed_all", False)), "complete_reward": DAILY_COMPLETE_GEM_REWARD, "premium_currency_key": PREMIUM_CURRENCY_KEY, "premium_currency_name": PREMIUM_CURRENCY_NAME, "currency_balance": int(user.get(PREMIUM_CURRENCY_KEY, 0) or 0)}
+
+async def ensure_daily_on_user(user: dict) -> dict:
+    dg = normalize_daily_goals(user)
+    if dg != (user.get("daily_goals") or {}):
+        await db.users.update_one({"id": user["id"]}, {"$set": {"daily_goals": dg}})
+        user["daily_goals"] = dg
+    return user
+
+async def credit_daily_goal(user_id: str, key: str, amount: int = 1):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        return
+    dg = normalize_daily_goals(user)
+    if key in dg["progress"]:
+        target = next((g["target"] for g in DAILY_GOAL_DEFS if g["key"] == key), 999)
+        dg["progress"][key] = min(int(target), int(dg["progress"].get(key, 0) or 0) + amount)
+        await db.users.update_one({"id": user_id}, {"$set": {"daily_goals": dg}})
+
+async def auto_claim_completed_daily_goals(user: dict) -> dict:
+    dg = normalize_daily_goals(user)
+    inc = {"gold": 0}
+    xp_gain = 0
+    changed = False
+    for g in DAILY_GOAL_DEFS:
+        key = g["key"]
+        if int(dg["progress"].get(key, 0) or 0) >= int(g["target"]) and not dg["claimed"].get(key, False):
+            dg["claimed"][key] = True
+            inc["gold"] += int(g.get("reward_gold", 0))
+            xp_gain += int(g.get("reward_xp", 0))
+            changed = True
+    all_done = all(int(dg["progress"].get(g["key"], 0) or 0) >= int(g["target"]) for g in DAILY_GOAL_DEFS)
+    if all_done and not dg.get("claimed_all", False):
+        dg["claimed_all"] = True
+        inc[PREMIUM_CURRENCY_KEY] = DAILY_COMPLETE_GEM_REWARD
+        changed = True
+    if changed:
+        update = {"daily_goals": dg}
+        ops = {"$set": update}
+        inc = {k: v for k, v in inc.items() if v}
+        if inc:
+            ops["$inc"] = inc
+        await db.users.update_one({"id": user["id"]}, ops)
+        if xp_gain:
+            await grant_xp(user["id"], xp_gain)
+    fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password": 0})
+    return fresh or user
+
+def get_adventure_progress(user: dict) -> dict:
+    prog = user.get("adventure_progress") or {"tier": 1, "highest_node": 0, "completed": []}
+    return {"tier": int(prog.get("tier", 1) or 1), "highest_node": int(prog.get("highest_node", 0) or 0), "completed": [int(x) for x in (prog.get("completed") or [])]}
+
+def build_adventure_map(user: dict) -> dict:
+    prog = get_adventure_progress(user)
+    tier = prog["tier"]
+    biome = ADVENTURE_BIOMES.get(tier) or {**ADVENTURE_BIOMES[1], "name": f"Tier {tier} Forest Depths", "subtitle": "The forest path grows darker and stronger enemies wait ahead."}
+    completed = set(prog["completed"])
+    highest = max(0, min(10, int(prog["highest_node"])))
+    current_node = 1 if highest <= 0 else min(10, highest + 1)
+    nodes = []
+    for n in biome["nodes"]:
+        node_no = int(n["node"])
+        completed_node = node_no in completed
+        unlocked = node_no == current_node or completed_node
+        nodes.append({**n, "completed": completed_node, "unlocked": unlocked, "current": (node_no == current_node and not completed_node)})
+    return {"tier": tier, "name": biome["name"], "subtitle": biome["subtitle"], "biome": biome["biome"], "background": biome["background"], "accent": biome["accent"], "progress": {**prog, "highest_node": highest, "current_node": current_node}, "nodes": nodes}
+
+def adventure_node_def(tier: int, node_no: int) -> dict:
+    biome = ADVENTURE_BIOMES.get(tier) or ADVENTURE_BIOMES[1]
+    for n in biome["nodes"]:
+        if int(n["node"]) == int(node_no):
+            return n
+    raise HTTPException(404, "Adventure node not found")
+
+def gen_adventure_enemy(tier: int, node_no: int) -> dict:
+    node = adventure_node_def(tier, node_no)
+    kind = node.get("kind", "normal")
+    base = 16 + tier * 4 + node_no * 3
+    mult = {"normal": 1.0, "elite": 1.25, "miniboss": 1.65, "boss": 2.25}.get(kind, 1.0)
+    tags_by_kind = {"normal": ["infantry"], "elite": ["assassin"], "miniboss": ["lancer", "nature"], "boss": ["demon", "infantry"]}
+    tags = [t for t in tags_by_kind.get(kind, ["infantry"]) if t in CLASS_META]
+    if not tags:
+        tags = ["infantry"]
+    hp = int(base * mult)
+    atk = max(2, int(2 + tier + node_no * 0.45 + (2 if kind in ("miniboss", "boss") else 0)))
+    enemy = {
+        "id": str(uuid.uuid4()), "monster_id": f"adv_t{tier}_n{node_no}", "name": node["enemy"],
+        "archetype": tags[0], "class_tags": tags, "class_chips": class_chips(tags),
+        "portrait": enemy_portrait_asset(f"adv_t{tier}_n{node_no}", node.get("enemy", ""), tags, kind),
+        "tier": tier, "elite": kind in ("elite", "miniboss", "boss"), "hp": hp, "max_hp": hp,
+        "atk": atk, "int_stat": max(1, tier + (2 if "demon" in tags else 0)), "def_stat": max(0, tier + node_no // 4),
+        "res": max(0, tier + node_no // 5), "dex": max(1, tier + node_no // 3), "mob": min(10, 1 + node_no // 3),
+        "crit": 2 + node_no, "blind_turns": 0,
+        "xp_reward": int((8 + node_no * 2 + tier * 4) * (0.7 if kind == "normal" else 1.0)),
+        "gold_reward": int((5 + node_no + tier * 3) * (1.0 if kind == "normal" else 1.4)),
+        "adventure_kind": kind,
+    }
+    return enemy
+
+async def adventure_boss_reward(user_id: str, tier: int, node_no: int) -> Optional[dict]:
+    if node_no not in (5, 10):
+        return None
+    user = await db.users.find_one({"id": user_id})
+    level = max(1, int(user.get("level", 1) if user else 1)) + tier
+    kind = "boss" if node_no == 10 else "miniboss"
+    slot = "chest" if kind == "miniboss" else "main_hand"
+    rarity = "rare" if tier <= 1 else "epic"
+    name = "Hollowroot Barkplate" if node_no == 5 else "Thornwarden Relicblade"
+    traits = {"element":"nature", "material":"wood", "shape":"sharp" if slot=="main_hand" else "round", "weight":"medium", "family":"fabric" if slot=="chest" else "hardware", "uncommonness": 0.85}
+    rng = random.Random(tier * 100 + node_no)
+    stats = gen_stats_for(slot, level, rarity, traits["element"], traits, rng, two_handed_for(slot, traits["shape"], rng))
+    item = {"id": str(uuid.uuid4()), "owner_id": user_id, "barcode": f"BOSS-T{tier}-N{node_no}", "name": name, "lore": "A milestone reward earned from the forest path.", "slot": slot, "rarity": rarity, "level": level, "element": traits["element"], "material": traits["material"], "shape": traits["shape"], "weight": traits["weight"], "family": traits["family"], "two_handed": slot=="main_hand", "equipped": False, "listed": False, "class_tags": [], "effective_vs": [], "upgrade_xp": 0, "upgrade_xp_to_next": upgrade_xp_to_next(level), "created_at": now_utc(), **stats}
+    item["class_tags"] = infer_item_class_tags(item)
+    item["effective_vs"] = item_effective_vs(item)
+    item["icon"] = item_icon_for(item)
+    await db.items.insert_one(dict(item))
+    item.pop("_id", None)
+    return item
 
 # ---------------- Routes ----------------
 
@@ -1052,6 +1279,7 @@ def new_user_doc(user_id: str, email: str, username: str, password_hash: Optiona
         "level": 1,
         "xp": 0,
         "gold": 500,
+        PREMIUM_CURRENCY_KEY: 0,
         "hp": 100,
         "mana": 50,
         "max_hp": 100,
@@ -1067,6 +1295,8 @@ def new_user_doc(user_id: str, email: str, username: str, password_hash: Optiona
         "battles_lost": 0,
         "class_affinity": {},
         "talents": {},
+        "daily_goals": {},
+        "adventure_progress": {"tier": 1, "highest_node": 0, "completed": []},
         "auth_provider": provider,
         "created_at": now_utc(),
     }
@@ -1156,9 +1386,47 @@ async def update_avatar(body: AvatarIn, user=Depends(get_current_user)):
 
 @api.get("/auth/me")
 async def me(user=Depends(get_current_user)):
+    user = await ensure_daily_on_user(user)
     user.update(stamina_display_payload(user))
     user.update(sigil_display_payload(user))
+    user["premium_currency_key"] = PREMIUM_CURRENCY_KEY
+    user["premium_currency_name"] = PREMIUM_CURRENCY_NAME
+    user[PREMIUM_CURRENCY_KEY] = int(user.get(PREMIUM_CURRENCY_KEY, 0) or 0)
     return user
+
+@api.get("/daily-goals")
+async def daily_goals(user=Depends(get_current_user)):
+    user = await ensure_daily_on_user(user)
+    user = await auto_claim_completed_daily_goals(user)
+    return build_daily_payload(user)
+
+@api.get("/adventure/map")
+async def adventure_map(user=Depends(get_current_user)):
+    return build_adventure_map(user)
+
+@api.post("/adventure/start/{node_no}")
+async def adventure_start(node_no: int, user=Depends(get_current_user)):
+    prog = get_adventure_progress(user)
+    tier = prog["tier"]
+    current_node = min(10, int(prog.get("highest_node", 0) or 0) + 1)
+    if node_no < 1 or node_no > 10:
+        raise HTTPException(400, "Invalid adventure node")
+    if node_no in set(prog.get("completed", [])):
+        raise HTTPException(400, "This node has already been cleared. Push forward to the highlighted node.")
+    if node_no != current_node:
+        raise HTTPException(400, f"Node {node_no} is locked. Continue at the highlighted node {current_node}.")
+    if int(user.get("stamina", 0) or 0) < 1:
+        raise HTTPException(400, "Not enough Battle Stamina (1 required)")
+    now = now_utc()
+    new_stamina = max(0, int(user.get("stamina", 0) or 0) - 1)
+    await db.users.update_one({"id": user["id"]}, {"$set": {"stamina": new_stamina, "stamina_updated_at": now}})
+    enemy = gen_adventure_enemy(tier, node_no)
+    await db.battle_previews.update_one(
+        {"user_id": user["id"]},
+        {"$set": {"enemy": enemy, "turn": "player", "created_at": now, "battle_mode": "adventure", "adventure_tier": tier, "adventure_node": node_no}},
+        upsert=True,
+    )
+    return {"ok": True, "enemy": enemy, "mode": "adventure", "tier": tier, "node": node_no, "stamina": new_stamina, "stamina_max": stamina_max(user["level"])}
 
 
 # ---------------- Character / stats ----------------
@@ -1210,6 +1478,9 @@ async def get_character(user=Depends(get_current_user)):
     display_user["max_mana"] = int(user.get("max_mana", 50)) + int(totals.get("mana_bonus", 0) or 0)
     display_user["hp"] = min(int(display_user.get("hp", display_user["max_hp"])), display_user["max_hp"])
     display_user["mana"] = min(int(display_user.get("mana", display_user["max_mana"])), display_user["max_mana"])
+    display_user["premium_currency_key"] = PREMIUM_CURRENCY_KEY
+    display_user["premium_currency_name"] = PREMIUM_CURRENCY_NAME
+    display_user[PREMIUM_CURRENCY_KEY] = int(user.get(PREMIUM_CURRENCY_KEY, 0) or 0)
     return {
         "user": display_user,
         "equipped": equipped,
@@ -1317,13 +1588,13 @@ async def scan(body: ScanIn, user=Depends(get_current_user)):
     if not bc or len(bc) < 4:
         raise HTTPException(400, "Invalid barcode")
 
-    inv_count = await db.items.count_documents({"owner_id": user["id"], "listed": False})
-    if inv_count >= INVENTORY_MAX:
-        raise HTTPException(400, f"Inventory full ({INVENTORY_MAX}/{INVENTORY_MAX}). Clear space before scanning.")
-
     charge = int(user.get("sigil_charge", SIGIL_CHARGE_MAX) or 0)
     if charge < SIGIL_CHARGE_COST:
         raise HTTPException(400, f"The scanner needs {SIGIL_CHARGE_COST} Sigil Charge to transmute again.")
+
+    inv_count = await db.items.count_documents({"owner_id": user["id"], "listed": False})
+    if inv_count >= INVENTORY_MAX:
+        raise HTTPException(400, f"Inventory full ({INVENTORY_MAX}/{INVENTORY_MAX}). Destroy or list an item before scanning.")
 
     prior = await db.user_scans.find_one({"user_id": user["id"], "barcode": bc})
     scan_count = int(prior.get("count", 0)) if prior else 0
@@ -1342,7 +1613,7 @@ async def scan(body: ScanIn, user=Depends(get_current_user)):
     if recent_duplicate and rng.random() < 0.45:
         # Same-day repeats are useful but less explosive: mostly upgrade materials / echo shards.
         slot = "upgrade"
-        rarity = "common" if rng.random() < 0.70 else "uncommon"
+        rarity = "common" if rng.random() < 0.82 else "rare"
     elif is_upgrade_material(bc) and rng.random() < 0.35:
         slot = "upgrade"
         rarity = roll_rarity(rng, user["level"], traits["uncommonness"] * 0.75)
@@ -1350,7 +1621,7 @@ async def scan(body: ScanIn, user=Depends(get_current_user)):
         slot = family_to_slot(traits, rng)
         rarity = roll_rarity(rng, user["level"], traits["uncommonness"])
 
-    rarity_bias = {"common": 0.55, "uncommon": 0.64, "rare": 0.72, "epic": 0.88, "legendary": 1.0}[rarity]
+    rarity_bias = {"common": 0.55, "rare": 0.72, "epic": 0.88, "legendary": 1.0}[rarity]
     level = max(1, min(user["level"], int(round(user["level"] * rarity_bias * rng.uniform(0.7, 1.0)))))
     two_h = two_handed_for(slot, traits["shape"], rng)
     stats = gen_stats_for(slot, level, rarity, traits["element"], traits, rng, two_h)
@@ -1412,6 +1683,7 @@ async def scan(body: ScanIn, user=Depends(get_current_user)):
     if scan_count == 0:
         xp_gain += 3  # first discovery bonus
     await grant_xp(user["id"], xp_gain)
+    await credit_daily_goal(user["id"], "scans", 1)
 
     item["sigil_charge"] = new_charge
     item["sigil_charge_max"] = int(user.get("sigil_charge_max", SIGIL_CHARGE_MAX) or SIGIL_CHARGE_MAX)
@@ -1521,6 +1793,7 @@ async def use_item(item_id: str, user=Depends(get_current_user)):
         {"$set": {"hp": new_hp, "mana": new_mana, "stamina": new_stamina, "stamina_updated_at": now_utc()}},
     )
     await db.items.delete_one({"id": item_id})
+    await credit_daily_goal(user["id"], "use_item", 1)
     return {"ok": True, "hp": new_hp, "mana": new_mana, "stamina": new_stamina}
 
 
@@ -1532,6 +1805,7 @@ async def destroy_item(item_id: str, user=Depends(get_current_user)):
     refund = max(1, item["level"] * 2)
     await db.users.update_one({"id": user["id"]}, {"$inc": {"gold": refund}})
     await db.items.delete_one({"id": item_id})
+    await credit_daily_goal(user["id"], "destroy", 1)
     return {"ok": True, "refund": refund}
 
 
@@ -1559,7 +1833,7 @@ async def upgrade_item(body: UpgradeIn, user=Depends(get_current_user)):
         cur_xp -= upgrade_xp_to_next(level)
         level += 1
         leveled = True
-        # Item identity: improve what the item already is good at.
+        # RPG identity: improve what the item already is good at.
         for k in ("atk", "int_stat", "def_stat", "res", "dex", "crit", "luk", "hp", "mana"):
             v = int(target.get(k, 0) or stat_updates.get(k, 0) or 0)
             if v:
@@ -1793,8 +2067,8 @@ def load_monsters() -> list[dict]:
         except Exception as e:
             logger.warning("Failed to load monsters.json: %s", e)
     return [
-        {"id":"green_slimeling","name":"Green Slimeling","class_tags":["infantry"],"tier_min":1,"hp":14,"atk":2,"int_stat":1,"def_stat":0,"res":0,"dex":1,"mob":1,"crit":0,"xp":10,"gold":5,"portrait":"https://api.dicebear.com/8.x/bottts-neutral/png?seed=slime"},
-        {"id":"cave_bat","name":"Cave Bat","class_tags":["flier","assassin"],"tier_min":1,"hp":12,"atk":2,"int_stat":1,"def_stat":0,"res":0,"dex":3,"mob":5,"crit":1,"xp":12,"gold":6,"portrait":"https://api.dicebear.com/8.x/bottts-neutral/png?seed=bat"},
+        {"id":"green_slimeling","name":"Green Slimeling","class_tags":["infantry"],"tier_min":1,"hp":14,"atk":2,"int_stat":1,"def_stat":0,"res":0,"dex":1,"mob":1,"crit":0,"xp":10,"gold":5,"portrait":"asset:enemy_slime"},
+        {"id":"cave_bat","name":"Cave Bat","class_tags":["flier","assassin"],"tier_min":1,"hp":12,"atk":2,"int_stat":1,"def_stat":0,"res":0,"dex":3,"mob":5,"crit":1,"xp":12,"gold":6,"portrait":"asset:enemy_bat"},
     ]
 
 def effectiveness_multiplier(attacker_tags: list[str], defender_tags: list[str]) -> Tuple[float, list[str]]:
@@ -1838,7 +2112,7 @@ def gen_enemy(tier: int, salt: str = "") -> dict:
     return {
         "id": str(uuid.uuid4()), "monster_id": m.get("id", name.lower().replace(" ","_")), "name": name,
         "archetype": tags[0], "class_tags": tags, "class_chips": class_chips(tags),
-        "portrait": m.get("portrait") or f"https://api.dicebear.com/8.x/bottts-neutral/png?seed={name}",
+        "portrait": enemy_portrait_asset(m.get("id", ""), name, tags, "elite" if is_elite else "normal"),
         "tier": tier, "elite": is_elite, "hp": hp, "max_hp": hp, "atk": atk, "int_stat": int_stat,
         "def_stat": def_stat, "res": res, "dex": dex, "mob": mob, "crit": crit,
         "blind_turns": 0, "xp_reward": int(m.get("xp", 10)) + tier * 2, "gold_reward": int(m.get("gold", 5)) + tier,
@@ -1867,7 +2141,8 @@ async def ensure_battle_state(user: dict) -> dict:
     enemy = gen_enemy(user.get("difficulty_tier", 1), salt=user["id"] + str(now.timestamp()))
     await db.battle_previews.update_one(
         {"user_id": user["id"]},
-        {"$set": {"enemy": enemy, "turn": "player", "created_at": now}},
+        {"$set": {"enemy": enemy, "turn": "player", "created_at": now, "battle_mode": "quick"},
+         "$unset": {"adventure_tier": "", "adventure_node": ""}},
         upsert=True,
     )
     return {"enemy": enemy, "turn": "player", "started": False, "user": user}
@@ -1932,11 +2207,15 @@ async def battle_preview(user=Depends(get_current_user)):
     class_state = equipped_affinity(equipped, user.get("class_affinity"))
     main = main_weapon_from(equipped)
     skills = build_player_skills(class_state, equipped)
+    preview_mode = (preview or {}).get("battle_mode", "quick")
     payload = {
         "enemy": enemy,
         "difficulty_tier": user.get("difficulty_tier", 1), "class_state": class_state,
         "main_weapon": main, "totals": totals, "skills": skills, "turn": state.get("turn", "player"),
         "battle_active": True,
+        "mode": preview_mode,
+        "adventure_node": (preview or {}).get("adventure_node"),
+        "adventure_tier": (preview or {}).get("adventure_tier"),
         "change_enemy_seconds": change_seconds,
         "change_enemy_ready": change_seconds <= 0,
     }
@@ -1984,6 +2263,10 @@ async def battle_fight(body: BattleActionIn = BattleActionIn(), user=Depends(get
     user = state.get("user", user)
     enemy = state["enemy"]
     enemy.pop("_id", None) if isinstance(enemy, dict) else None
+    preview_doc = await db.battle_previews.find_one({"user_id": user["id"]}) or {}
+    battle_mode = preview_doc.get("battle_mode", "quick")
+    adventure_node_no = int(preview_doc.get("adventure_node", 0) or 0)
+    adventure_tier_no = int(preview_doc.get("adventure_tier", user.get("difficulty_tier", 1)) or 1)
     if state.get("turn") != "player":
         await db.battle_previews.update_one({"user_id": user["id"]}, {"$set": {"turn": "player"}})
 
@@ -2072,21 +2355,41 @@ async def battle_fight(body: BattleActionIn = BattleActionIn(), user=Depends(get
     if enemy.get("hp", 0) <= 0:
         resolved = True; win = True
         rewards["xp"] = int(enemy.get("xp_reward", 10 + new_tier * 4)); rewards["gold"] = int(enemy.get("gold_reward", 5 + new_tier * 3 + p_luk))
-        if rng.randint(1,100) <= min(80, 18 + p_luk*2 + (40 if enemy.get("elite") else 0)):
-            rewards["item"] = await drop_loot(user["id"], new_tier)
-        new_tier += 1
-        await db.users.update_one({"id":user["id"]}, {"$set":{"hp":max(1,p_hp),"mana":max(0,p_mana),"difficulty_tier":new_tier}, "$inc":{"battles_won":1}})
+        if battle_mode == "adventure":
+            if adventure_node_no in (5, 10):
+                rewards["item"] = await adventure_boss_reward(user["id"], adventure_tier_no, adventure_node_no)
+            prog = get_adventure_progress(user)
+            completed = sorted(set(prog.get("completed", [])) | {adventure_node_no})
+            highest = max(prog.get("highest_node", 0), adventure_node_no)
+            next_tier = adventure_tier_no + 1 if adventure_node_no >= 10 else adventure_tier_no
+            new_prog = {"tier": next_tier, "highest_node": 0 if adventure_node_no >= 10 else highest, "completed": [] if adventure_node_no >= 10 else completed}
+            await db.users.update_one({"id":user["id"]}, {"$set":{"hp":max(1,p_hp),"mana":max(0,p_mana),"adventure_progress":new_prog}, "$inc":{"battles_won":1}})
+            await credit_daily_goal(user["id"], "adventure_win", 1)
+            next_enemy = gen_adventure_enemy(next_tier, 1)
+        else:
+            if rng.randint(1,100) <= min(80, 18 + p_luk*2 + (40 if enemy.get("elite") else 0)):
+                rewards["item"] = await drop_loot(user["id"], new_tier)
+            new_tier += 1
+            await db.users.update_one({"id":user["id"]}, {"$set":{"hp":max(1,p_hp),"mana":max(0,p_mana),"difficulty_tier":new_tier}, "$inc":{"battles_won":1}})
+            await credit_daily_goal(user["id"], "quick_wins", 1)
+            next_enemy = gen_enemy(new_tier, salt=user["id"]+"preview-next")
         await grant_xp(user["id"], rewards["xp"]); await db.users.update_one({"id":user["id"]}, {"$inc":{"gold":rewards["gold"]}})
+        fresh_for_daily = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password": 0})
+        if fresh_for_daily:
+            await auto_claim_completed_daily_goals(fresh_for_daily)
         await db.battle_previews.delete_one({"user_id": user["id"]})
-        next_enemy = gen_enemy(new_tier, salt=user["id"]+"preview-next")
     else:
         p_hp = enemy_attack_once(enemy, p_hp, p_def, p_res, p_dex, p_mob, rng, log)
         if p_hp <= 0:
             resolved = True; win = False
-            new_tier = max(1, new_tier-1)
-            await db.users.update_one({"id":user["id"]}, {"$set":{"hp":1,"mana":max(0,p_mana),"difficulty_tier":new_tier}, "$inc":{"battles_lost":1}})
+            if battle_mode == "adventure":
+                await db.users.update_one({"id":user["id"]}, {"$set":{"hp":1,"mana":max(0,p_mana)}, "$inc":{"battles_lost":1}})
+                next_enemy = gen_adventure_enemy(adventure_tier_no, adventure_node_no or 1)
+            else:
+                new_tier = max(1, new_tier-1)
+                await db.users.update_one({"id":user["id"]}, {"$set":{"hp":1,"mana":max(0,p_mana),"difficulty_tier":new_tier}, "$inc":{"battles_lost":1}})
+                next_enemy = gen_enemy(new_tier, salt=user["id"]+"preview-next-loss")
             await db.battle_previews.delete_one({"user_id": user["id"]})
-            next_enemy = gen_enemy(new_tier, salt=user["id"]+"preview-next-loss")
         else:
             await db.users.update_one({"id":user["id"]}, {"$set":{"hp":max(1,p_hp),"mana":max(0,p_mana)}})
             await db.battle_previews.update_one({"user_id": user["id"]}, {"$set": {"enemy": enemy, "turn": "player", "updated_at": now_utc()}}, upsert=True)
@@ -2108,7 +2411,7 @@ async def drop_loot(user_id: str, tier: int) -> dict:
     rng = _seed_rand(fake_bc, "loot")
     slot = family_to_slot(traits, rng)
     rarity = roll_rarity(rng, user["level"], traits["uncommonness"] + 0.2)
-    rar_bias = {"common": 0.6, "uncommon": 0.68, "rare": 0.75, "epic": 0.9, "legendary": 1.0}[rarity]
+    rar_bias = {"common": 0.6, "rare": 0.75, "epic": 0.9, "legendary": 1.0}[rarity]
     level = max(1, min(user["level"], int(round(user["level"] * rar_bias))))
     two_h = two_handed_for(slot, traits["shape"], rng)
     stats = gen_stats_for(slot, level, rarity, traits["element"], traits, rng, two_h)

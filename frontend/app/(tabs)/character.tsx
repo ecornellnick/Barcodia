@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/src/lib/auth";
 import {
   api, Item, Totals, RARITY_COLORS, SLOT_ICON, Slot, STAT_META,
-  ClassState, CLASS_META, TalentState, TalentNode, itemIcon, GOLD_ICON,
+  ClassState, CLASS_META, TalentState, TalentNode, itemIcon, GOLD_ICON, DailyGoalsPayload,
 } from "@/src/lib/api";
 import { COLORS, IMAGES, resolveAvatar } from "@/src/lib/theme";
 import AvatarPickerModal from "@/src/components/AvatarPickerModal";
@@ -60,13 +60,15 @@ export default function Character() {
   const [showHeroMenu, setShowHeroMenu] = useState(false);
   const [showStatus, setShowStatus] = useState(false);
   const [showEquipment, setShowEquipment] = useState(false);
+  const [showDaily, setShowDaily] = useState(false);
+  const [dailyGoals, setDailyGoals] = useState<DailyGoalsPayload | null>(null);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [staminaNext, setStaminaNext] = useState(user?.stamina_next_seconds ?? 0);
   const [sigilNext, setSigilNext] = useState(user?.sigil_next_seconds ?? 0);
 
   const load = useCallback(async () => {
     try {
-      const [r, inv] = await Promise.all([api.character(), api.inventory()]);
+      const [r, inv, goals] = await Promise.all([api.character(), api.inventory(), api.dailyGoals().catch(() => null)]);
       setActiveUser(r.user);
       setEquipped(r.equipped);
       setTotals(r.totals);
@@ -74,6 +76,7 @@ export default function Character() {
       setTalentState(r.talent_state ?? null);
       setXpNext(r.xp_to_next);
       setInventory(inv);
+      setDailyGoals(goals);
       setStaminaNext(r.user.stamina_next_seconds ?? 0);
       setSigilNext(r.user.sigil_next_seconds ?? 0);
       await refresh();
@@ -227,7 +230,8 @@ export default function Character() {
         <View style={styles.tipCard}><Ionicons name="information-circle-outline" color={COLORS.secondary} size={18} /><Text style={styles.tipText}>Class proficiency rises slowly as you use weapons and skills. Talent Tree is in test mode with extra points so we can tune it fast.</Text></View>
       </ScrollView>
 
-      <HeroMenuModal visible={showHeroMenu} onClose={() => setShowHeroMenu(false)} onStatus={() => { setShowHeroMenu(false); setShowStatus(true); }} onEquipment={() => { setShowHeroMenu(false); setShowEquipment(true); }} onProficiency={() => { setShowHeroMenu(false); setShowProficiency(true); }} onTalents={() => { setShowHeroMenu(false); setShowTalents(true); }} />
+      <HeroMenuModal visible={showHeroMenu} onClose={() => setShowHeroMenu(false)} onDaily={() => { setShowHeroMenu(false); setShowDaily(true); }} onStatus={() => { setShowHeroMenu(false); setShowStatus(true); }} onEquipment={() => { setShowHeroMenu(false); setShowEquipment(true); }} onProficiency={() => { setShowHeroMenu(false); setShowProficiency(true); }} onTalents={() => { setShowHeroMenu(false); setShowTalents(true); }} />
+      <DailyGoalsModal visible={showDaily} onClose={() => setShowDaily(false)} daily={dailyGoals} />
       <StatusModal visible={showStatus} onClose={() => setShowStatus(false)} totals={totals} />
       <EquipmentModal visible={showEquipment} onClose={() => setShowEquipment(false)} equipped={equipped} isTwoH={isTwoH} onPick={setSelectedItem} />
       <ProficiencyModal visible={showProficiency} onClose={() => setShowProficiency(false)} rows={proficiencyRows} />
@@ -259,13 +263,18 @@ function ProficiencyModal({ visible, onClose, rows }: { visible: boolean; onClos
 }
 
 
-function HeroMenuModal({ visible, onClose, onStatus, onEquipment, onProficiency, onTalents }: { visible: boolean; onClose: () => void; onStatus: () => void; onEquipment: () => void; onProficiency: () => void; onTalents: () => void }) {
+function HeroMenuModal({ visible, onClose, onDaily, onStatus, onEquipment, onProficiency, onTalents }: { visible: boolean; onClose: () => void; onDaily: () => void; onStatus: () => void; onEquipment: () => void; onProficiency: () => void; onTalents: () => void }) {
   const row = (icon: string, label: string, sub: string, fn: () => void) => (
     <TouchableOpacity style={styles.menuRow} onPress={fn} activeOpacity={0.85}>
       <Text style={styles.menuIcon}>{icon}</Text><View style={{ flex: 1 }}><Text style={styles.menuLabel}>{label}</Text><Text style={styles.menuSub}>{sub}</Text></View><Ionicons name="chevron-forward" color={COLORS.textMuted} size={18} />
     </TouchableOpacity>
   );
-  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.sideBackdrop}><View style={styles.sidePanel}><Text style={styles.modalTitle}>HERO MENU</Text><Text style={styles.modalSub}>Open detailed character systems without crowding the main screen.</Text>{row("📊", "Status", "Combat stats and what they do.", onStatus)}{row("🎒", "Equipment", "Equipped gear and slots.", onEquipment)}{row("📈", "Class Proficiency", "Training progress by class style.", onProficiency)}{row("🌳", "Talent Tree", "Spend points, unlock branches, respec.", onTalents)}<TouchableOpacity style={styles.modalButton} onPress={onClose}><Text style={styles.modalButtonText}>CLOSE</Text></TouchableOpacity></View><TouchableOpacity style={{ flex: 1 }} onPress={onClose} /></View></Modal>;
+  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.sideBackdrop}><View style={styles.sidePanel}><Text style={styles.modalTitle}>HERO MENU</Text><Text style={styles.modalSub}>Open detailed character systems without crowding the main screen.</Text>{row("🎯", "Daily Goals", "Progress, rewards, and Aether Gems.", onDaily)}{row("📊", "Status", "Combat stats and what they do.", onStatus)}{row("🎒", "Equipment", "Equipped gear and slots.", onEquipment)}{row("📈", "Class Proficiency", "Training progress by class style.", onProficiency)}{row("🌳", "Talent Tree", "Spend points, unlock branches, respec.", onTalents)}<TouchableOpacity style={styles.modalButton} onPress={onClose}><Text style={styles.modalButtonText}>CLOSE</Text></TouchableOpacity></View><TouchableOpacity style={{ flex: 1 }} onPress={onClose} /></View></Modal>;
+}
+
+
+function DailyGoalsModal({ visible, onClose, daily }: { visible: boolean; onClose: () => void; daily: DailyGoalsPayload | null }) {
+  return <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}><View style={styles.modalBackdrop}><View style={styles.modalCard}><Text style={styles.modalTitle}>DAILY GOALS</Text><Text style={styles.modalSub}>Complete every goal to earn rare premium gems.</Text><View style={styles.dailyGemBox}><Text style={styles.dailyGemText}>💎 {daily?.currency_balance ?? 0} {daily?.premium_currency_name ?? "Aether Gems"}</Text></View><ScrollView style={{ maxHeight: 480 }}>{daily?.goals?.map((g) => <View key={g.key} style={styles.dailyGoalRow}><Text style={[styles.dailyGoalLabel, g.done && styles.dailyGoalDone]}>{g.done ? "✓" : "•"} {g.label}</Text><Text style={styles.dailyGoalCount}>{g.progress}/{g.target}</Text></View>) ?? <Text style={styles.modalSub}>Daily goals are loading.</Text>}</ScrollView><Text style={styles.dailyRewardText}>All goals reward: {daily?.complete_reward ?? 5} {daily?.premium_currency_name ?? "Aether Gems"}</Text><TouchableOpacity style={styles.modalButton} onPress={onClose}><Text style={styles.modalButtonText}>CLOSE</Text></TouchableOpacity></View></View></Modal>;
 }
 
 function StatusModal({ visible, onClose, totals }: { visible: boolean; onClose: () => void; totals: Totals }) {
@@ -304,6 +313,13 @@ const styles = StyleSheet.create({
   menuIcon: { fontSize: 22, width: 28, textAlign: "center" },
   menuLabel: { color: COLORS.textPrimary, fontSize: 14, fontWeight: "900" },
   menuSub: { color: COLORS.textMuted, fontSize: 10, marginTop: 2 },
+  dailyGemBox: { alignItems: "center", borderWidth: 1, borderColor: "rgba(255,215,0,0.35)", backgroundColor: "rgba(255,215,0,0.07)", borderRadius: 14, padding: 12, marginBottom: 12 },
+  dailyGemText: { color: COLORS.accent, fontWeight: "900", letterSpacing: 1 },
+  dailyGoalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingVertical: 10 },
+  dailyGoalLabel: { color: COLORS.textSecondary, fontWeight: "800", flex: 1, paddingRight: 10 },
+  dailyGoalDone: { color: COLORS.secondary },
+  dailyGoalCount: { color: COLORS.textMuted, fontWeight: "900" },
+  dailyRewardText: { color: COLORS.textSecondary, textAlign: "center", marginTop: 12, fontWeight: "800" },
   effectSummary: { backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, padding: 10, marginBottom: 10 },
   effectSummaryText: { color: COLORS.textSecondary, fontSize: 11, lineHeight: 16 },
   talentBranch: { marginBottom: 14, borderWidth: 1, borderColor: "rgba(255,215,0,0.25)", borderRadius: 16, padding: 10, backgroundColor: "rgba(255,255,255,0.035)" },
