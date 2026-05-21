@@ -11,10 +11,11 @@ from typing import List, Optional, Literal, Tuple, Any
 import jwt
 import bcrypt
 import httpx
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, UploadFile, File, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
@@ -46,12 +47,18 @@ PREMIUM_CURRENCY_NAME = "Aether Gems"
 DAILY_COMPLETE_GEM_REWARD = 5
 ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
 
+# Frontend image assets are served by the backend in local/dev so admin-uploaded
+# assets can be previewed and used by the mobile app without rebundling.
+FRONTEND_DIR = ROOT_DIR.parent / "frontend"
+FRONTEND_IMAGES_DIR = FRONTEND_DIR / "assets" / "images"
+FRONTEND_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
 
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
 
 app = FastAPI(title="Barcodia API")
+app.mount("/assets", StaticFiles(directory=str(FRONTEND_IMAGES_DIR)), name="assets")
 api = APIRouter(prefix="/api")
 bearer = HTTPBearer(auto_error=False)
 
@@ -151,6 +158,12 @@ class AdminJsonSaveIn(BaseModel):
 
 class AdminConfigSaveIn(BaseModel):
     data: Any
+
+
+# ---------------- Store / Admin Asset Models ----------------
+
+class StoreBuyIn(BaseModel):
+    quantity: int = Field(default=1, ge=1, le=99)
 
 
 # ---------------- Helpers ----------------
@@ -1923,6 +1936,112 @@ async def upgrade_item(body: UpgradeIn, user=Depends(get_current_user)):
     return {"ok": True, "item": upgraded, "xp_added": gained, "leveled": leveled}
 
 
+
+# ---------------- NPC Store ----------------
+
+STORE_DATA_FILE = ROOT_DIR / "data" / "store" / "gold_store.json"
+
+
+def public_asset_url(asset_key: Optional[str]) -> Optional[str]:
+    if not asset_key:
+        return None
+    if asset_key.startswith("http://") or asset_key.startswith("https://"):
+        return asset_key
+    if asset_key.startswith("asset:"):
+        rel = asset_key.replace("asset:", "", 1).lstrip("/")
+        return f"/assets/{rel}"
+    return None
+
+
+def normalize_store_item(raw: dict) -> dict:
+    item = dict(raw or {})
+    item.setdefault("id", item.get("store_id") or str(uuid.uuid4()))
+    item.setdefault("name", "Unnamed Store Item")
+    item.setdefault("item_type", item.get("slot") or "consumable")
+    item.setdefault("slot", item.get("slot") or ("main_hand" if item.get("item_type") == "weapon" else item.get("item_type", "consumable")))
+    item.setdefault("rarity", "common")
+    item.setdefault("level", 1)
+    item.setdefault("gold_cost", int(item.get("gold_cost") or item.get("price_gold") or item.get("price") or item.get("gold") or 100))
+    item.setdefault("description", item.get("lore") or "A store item prepared by the Barcodia admin.")
+    item.setdefault("icon", item.get("icon") or "🧪")
+    item["image_url"] = public_asset_url(item.get("image") or item.get("portrait"))
+    return item
+
+
+def read_store_items() -> list:
+    if not STORE_DATA_FILE.exists():
+        STORE_DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+        STORE_DATA_FILE.write_text(json_dumps_pretty([]))
+    import json
+    data = json.loads(STORE_DATA_FILE.read_text() or "[]")
+    if isinstance(data, dict):
+        data = data.get("items", [])
+    return [normalize_store_item(x) for x in data if isinstance(x, dict)]
+
+
+def store_item_to_inventory_doc(store_item: dict, user_id: str) -> dict:
+    slot = store_item.get("slot") or "consumable"
+    item_type = store_item.get("item_type") or slot
+    stats = store_item.get("stats") if isinstance(store_item.get("stats"), dict) else {}
+    def stat(name, default=0):
+        return int(store_item.get(name, stats.get(name, default)) or 0)
+    return {
+        "id": str(uuid.uuid4()),
+        "owner_id": user_id,
+        "barcode": f"store:{store_item.get('id')}",
+        "name": store_item.get("name", "Store Item"),
+        "lore": store_item.get("description") or store_item.get("lore") or "Purchased from the Store.",
+        "slot": slot,
+        "rarity": store_item.get("rarity", "common"),
+        "level": int(store_item.get("level", 1) or 1),
+        "element": store_item.get("element", "none"),
+        "material": store_item.get("material", "metal"),
+        "shape": store_item.get("shape", "long"),
+        "weight": store_item.get("weight", "medium"),
+        "family": store_item.get("family", item_type),
+        "two_handed": bool(store_item.get("two_handed", False)),
+        "atk": stat("atk"), "int_stat": stat("int_stat"), "def_stat": stat("def_stat"), "res": stat("res"),
+        "dex": stat("dex"), "mob": stat("mob"), "crit": stat("crit"), "luk": stat("luk"),
+        "hp": stat("hp"), "mana": stat("mana"), "stamina_restore": stat("stamina_restore"),
+        "icon": store_item.get("icon") or item_icon_for(store_item),
+        "image": store_item.get("image"),
+        "class_tags": store_item.get("class_tags", []),
+        "effective_vs": store_item.get("effective_vs", []),
+        "equipped": False,
+        "listed": False,
+        "created_at": now_utc(),
+        "source": "gold_store",
+        "store_item_id": store_item.get("id"),
+    }
+
+
+@api.get("/store/gold")
+async def get_gold_store(user=Depends(get_current_user)):
+    items = [x for x in read_store_items() if x.get("enabled", True) and x.get("can_appear_in_store", True)]
+    return {"items": items, "gold": int(user.get("gold", 0)), "inventory_max": INVENTORY_MAX}
+
+
+@api.post("/store/gold/buy/{store_item_id}")
+async def buy_gold_store_item(store_item_id: str, body: StoreBuyIn, user=Depends(get_current_user)):
+    if body.quantity != 1:
+        raise HTTPException(400, "Quantity purchases are not enabled yet")
+    store_items = read_store_items()
+    store_item = next((x for x in store_items if x.get("id") == store_item_id), None)
+    if not store_item or not store_item.get("enabled", True):
+        raise HTTPException(404, "Store item not found")
+    cost = int(store_item.get("gold_cost", 0) or 0)
+    if int(user.get("gold", 0)) < cost:
+        raise HTTPException(400, "Not enough gold")
+    inv_count = await db.items.count_documents({"owner_id": user["id"], "listed": {"$ne": True}})
+    if inv_count >= INVENTORY_MAX:
+        raise HTTPException(400, "Inventory full")
+    item_doc = store_item_to_inventory_doc(store_item, user["id"])
+    await db.users.update_one({"id": user["id"]}, {"$inc": {"gold": -cost}})
+    await db.items.insert_one(dict(item_doc))
+    item_doc.pop("_id", None)
+    return {"ok": True, "item": item_doc, "gold_spent": cost, "gold": int(user.get("gold", 0)) - cost}
+
+
 # ---------------- Trading House ----------------
 
 @api.get("/market/price-band/{item_id}")
@@ -2582,6 +2701,76 @@ def write_admin_json_file(key: str, data: Any) -> dict:
     # Round-trip through JSON serialization to fail fast on bad data.
     path.write_text(json_dumps_pretty(data))
     return {"ok": True, "key": key, "path": str(path.relative_to(ROOT_DIR))}
+
+
+
+ALLOWED_ADMIN_ASSET_BUCKETS = {
+    "items/weapons", "items/armor", "items/consumables", "items/materials", "items/trinkets",
+    "enemies/shared", "enemies/quick_hunt", "enemies/tier_1_forest",
+    "avatars", "maps",
+}
+ADMIN_ASSET_SIZE_HINTS = {
+    "items/weapons": "512x512 PNG/WebP",
+    "items/armor": "512x512 PNG/WebP",
+    "items/consumables": "512x512 PNG/WebP",
+    "items/materials": "512x512 PNG/WebP",
+    "items/trinkets": "512x512 PNG/WebP",
+    "enemies/shared": "768x768 PNG/WebP",
+    "enemies/quick_hunt": "768x768 PNG/WebP",
+    "enemies/tier_1_forest": "768x768 PNG/WebP",
+    "avatars": "768x768 PNG/WebP",
+    "maps": "1080x1920 PNG/WebP",
+}
+
+
+def clean_asset_name(filename: str) -> str:
+    stem = Path(filename or "asset").stem.lower()
+    ext = Path(filename or "asset.png").suffix.lower() or ".png"
+    if ext not in (".png", ".jpg", ".jpeg", ".webp"):
+        raise HTTPException(400, "Only PNG, JPG, JPEG, and WebP images are allowed")
+    cleaned = "".join(ch if ch.isalnum() else "_" for ch in stem).strip("_") or "asset"
+    return f"{cleaned}_{uuid.uuid4().hex[:8]}{ext}"
+
+
+def list_bucket_assets(bucket: str) -> list:
+    if bucket not in ALLOWED_ADMIN_ASSET_BUCKETS:
+        raise HTTPException(400, "Invalid asset bucket")
+    folder = FRONTEND_IMAGES_DIR / bucket
+    folder.mkdir(parents=True, exist_ok=True)
+    out = []
+    for path in sorted(folder.iterdir()):
+        if path.is_file() and path.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
+            rel = path.relative_to(FRONTEND_IMAGES_DIR).as_posix()
+            out.append({"name": path.name, "bucket": bucket, "asset_key": f"asset:{rel}", "url": f"/assets/{rel}"})
+    return out
+
+
+@api.get("/admin/assets")
+async def admin_assets(bucket: Optional[str] = None, _: bool = Depends(require_admin_secret)):
+    buckets = sorted(ALLOWED_ADMIN_ASSET_BUCKETS)
+    if bucket:
+        return {"bucket": bucket, "size_hint": ADMIN_ASSET_SIZE_HINTS.get(bucket, "PNG/WebP"), "assets": list_bucket_assets(bucket)}
+    return {"buckets": [{"bucket": b, "size_hint": ADMIN_ASSET_SIZE_HINTS.get(b, "PNG/WebP"), "assets": list_bucket_assets(b)} for b in buckets]}
+
+
+@api.post("/admin/assets/upload")
+async def admin_upload_asset(
+    bucket: str = Form(...),
+    file: UploadFile = File(...),
+    _: bool = Depends(require_admin_secret),
+):
+    if bucket not in ALLOWED_ADMIN_ASSET_BUCKETS:
+        raise HTTPException(400, "Invalid asset bucket")
+    name = clean_asset_name(file.filename or "asset.png")
+    folder = FRONTEND_IMAGES_DIR / bucket
+    folder.mkdir(parents=True, exist_ok=True)
+    data = await file.read()
+    if len(data) > 8 * 1024 * 1024:
+        raise HTTPException(400, "Image too large. Keep uploads under 8 MB.")
+    dest = folder / name
+    dest.write_bytes(data)
+    rel = dest.relative_to(FRONTEND_IMAGES_DIR).as_posix()
+    return {"ok": True, "asset_key": f"asset:{rel}", "url": f"/assets/{rel}", "bucket": bucket, "name": name}
 
 
 @app.get("/admin", response_class=HTMLResponse)
