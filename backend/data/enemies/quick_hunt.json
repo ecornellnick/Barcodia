@@ -1,0 +1,8 @@
+[
+  {"id":"green_slimeling","weight":25},
+  {"id":"cave_bat","weight":20},
+  {"id":"moonfang_wolf","weight":10},
+  {"id":"forest_wisp","weight":10},
+  {"id":"bandit_archer","name":"Bandit Archer","portrait":"asset:enemy_shadow_assassin","roles":["normal"],"can_quick_hunt":true,"weight":12},
+  {"id":"goblin_scout","name":"Goblin Scout","portrait":"asset:enemy_goblin","roles":["normal"],"can_quick_hunt":true,"weight":14}
+]

@@ -1,0 +1,6 @@
+[
+  {"id":"green_slimeling","name":"Green Slimeling","portrait":"asset:enemy_slime","allowed_modes":["quick_hunt","adventure"],"biomes":["forest"],"roles":["normal"],"can_quick_hunt":true},
+  {"id":"cave_bat","name":"Cave Bat","portrait":"asset:enemy_bat","allowed_modes":["quick_hunt","adventure"],"biomes":["forest","cave"],"roles":["normal"],"can_quick_hunt":true},
+  {"id":"moonfang_wolf","name":"Moonfang Wolf","portrait":"asset:enemy_wolf","allowed_modes":["quick_hunt","adventure"],"biomes":["forest"],"roles":["elite"],"can_quick_hunt":true},
+  {"id":"forest_wisp","name":"Forest Wisp","portrait":"asset:enemy_wisp","allowed_modes":["quick_hunt","adventure"],"biomes":["forest"],"roles":["normal"],"can_quick_hunt":true}
+]

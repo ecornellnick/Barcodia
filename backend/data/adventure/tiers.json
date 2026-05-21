@@ -1,0 +1,5 @@
+[
+  {"tier":1,"key":"tier_1_forest","name":"Whisperwood Forest","biome":"forest","map_asset":"whisperwood-map.png","nodes":10,"miniboss_node":5,"boss_node":10},
+  {"tier":2,"key":"tier_2_desert","name":"Scorch Dunes","biome":"desert","map_asset":"future-desert-map.png","nodes":10,"miniboss_node":5,"boss_node":10},
+  {"tier":3,"key":"tier_3_water","name":"Tidefallen Ruins","biome":"water","map_asset":"future-water-map.png","nodes":10,"miniboss_node":5,"boss_node":10}
+]

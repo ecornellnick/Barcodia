@@ -1,0 +1,11 @@
+{
+  "premium_currency_key": "aether_gems",
+  "premium_currency_name": "Aether Gems",
+  "daily_complete_gem_reward": 5,
+  "inventory_max": 50,
+  "stamina_regen_seconds": 180,
+  "sigil_charge_cost": 10,
+  "sigil_charge_regen_seconds": 90,
+  "change_enemy_cooldown_seconds": 300,
+  "notes": "Admin-editable prototype config. Server constants still provide safe defaults. Wire additional config keys into gameplay as systems mature."
+}

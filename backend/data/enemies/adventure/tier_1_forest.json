@@ -1,0 +1,18 @@
+{
+  "tier": 1,
+  "biome": "forest",
+  "name": "Whisperwood Forest",
+  "quick_hunt_allowed": false,
+  "nodes": [
+    {"node":1,"role":"normal","enemy_id":"green_slimeling","name":"Green Slimeling","portrait":"asset:enemy_slime"},
+    {"node":2,"role":"normal","enemy_id":"cave_bat","name":"Cave Bat","portrait":"asset:enemy_bat"},
+    {"node":3,"role":"normal","enemy_id":"briar_rat","name":"Briar Rat","portrait":"asset:enemy_wolf"},
+    {"node":4,"role":"elite","enemy_id":"thorn_imp","name":"Thorn Imp","portrait":"asset:enemy_goblin"},
+    {"node":5,"role":"miniboss","enemy_id":"hollowroot_watcher","name":"Hollowroot Watcher","portrait":"asset:enemy_tree","can_quick_hunt":false},
+    {"node":6,"role":"normal","enemy_id":"forest_wisp","name":"Forest Wisp","portrait":"asset:enemy_wisp"},
+    {"node":7,"role":"elite","enemy_id":"moonfang_wolf","name":"Moonfang Wolf","portrait":"asset:enemy_wolf"},
+    {"node":8,"role":"normal","enemy_id":"sporeling","name":"Sporeling","portrait":"asset:enemy_slime"},
+    {"node":9,"role":"elite","enemy_id":"briar_knight","name":"Briar Knight","portrait":"asset:enemy_knight"},
+    {"node":10,"role":"boss","enemy_id":"elder_thornwarden","name":"Elder Thornwarden","portrait":"asset:enemy_boss_thorn","can_quick_hunt":false}
+  ]
+}

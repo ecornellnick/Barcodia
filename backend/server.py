@@ -6,15 +6,16 @@ import random
 import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import List, Optional, Literal, Tuple
+from typing import List, Optional, Literal, Tuple, Any
 
 import jwt
 import bcrypt
 import httpx
-from fastapi import FastAPI, APIRouter, HTTPException, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
 
@@ -43,6 +44,8 @@ INVENTORY_MAX = 50
 PREMIUM_CURRENCY_KEY = "aether_gems"
 PREMIUM_CURRENCY_NAME = "Aether Gems"
 DAILY_COMPLETE_GEM_REWARD = 5
+ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
+
 
 
 client = AsyncIOMotorClient(MONGO_URL)
@@ -126,10 +129,11 @@ class EquipIn(BaseModel):
 
 
 class BattleActionIn(BaseModel):
-    # RPG command choice. The player-facing label is Skill, not Magic.
+    # Player-facing label is Skill, not Magic. Mode is explicit so Quick Hunt and Adventure never share state.
     action: Literal["weapon", "skill", "ability", "item", "flee"] = "weapon"
     item_id: Optional[str] = None
     skill_id: Optional[str] = None
+    mode: Optional[Literal["quick", "adventure"]] = None
 
 
 class TalentSpendIn(BaseModel):
@@ -138,6 +142,15 @@ class TalentSpendIn(BaseModel):
 
 class TalentResetIn(BaseModel):
     confirm: bool = True
+
+
+class AdminJsonSaveIn(BaseModel):
+    key: str
+    data: Any
+
+
+class AdminConfigSaveIn(BaseModel):
+    data: Any
 
 
 # ---------------- Helpers ----------------
@@ -1191,9 +1204,51 @@ async def auto_claim_completed_daily_goals(user: dict) -> dict:
     fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password": 0})
     return fresh or user
 
+
+# Battle state isolation helpers. Quick Hunt and Adventure must never share the same
+# preview/enemy document. A user can have one stored quick hunt enemy and one stored
+# adventure-node enemy at the same time. The active mode simply decides which state
+# battle/fight should resolve.
+BATTLE_MODE_QUICK = "quick"
+BATTLE_MODE_ADVENTURE = "adventure"
+
+def battle_state_query(user_id: str, mode: str) -> dict:
+    return {"user_id": user_id, "battle_mode": mode}
+
+def normalize_battle_mode(mode: Optional[str]) -> str:
+    return BATTLE_MODE_ADVENTURE if mode == BATTLE_MODE_ADVENTURE else BATTLE_MODE_QUICK
+
+async def set_active_battle_mode(user_id: str, mode: str):
+    await db.users.update_one({"id": user_id}, {"$set": {"active_battle_mode": normalize_battle_mode(mode)}})
+
+def active_battle_mode_for(user: dict) -> str:
+    return normalize_battle_mode(user.get("active_battle_mode"))
+
+# Initial enemy-pool metadata. This is the foundation for an admin-editable system.
+# Bosses/minibosses are adventure-only and should never leak into Quick Hunt.
+ENEMY_POOL_RULES = {
+    "shared": ["Green Slimeling", "Cave Bat", "Moonfang Wolf", "Forest Wisp"],
+    "quick_hunt": ["Green Slimeling", "Cave Bat", "Bandit Archer", "Goblin Scout", "Moonfang Wolf"],
+    "adventure_tier_1_forest": [
+        "Green Slimeling", "Cave Bat", "Briar Rat", "Thorn Imp",
+        "Hollowroot Watcher", "Forest Wisp", "Moonfang Wolf", "Sporeling",
+        "Briar Knight", "Elder Thornwarden",
+    ],
+    "quick_hunt_excluded_roles": ["miniboss", "boss"],
+}
+
 def get_adventure_progress(user: dict) -> dict:
     prog = user.get("adventure_progress") or {"tier": 1, "highest_node": 0, "completed": []}
-    return {"tier": int(prog.get("tier", 1) or 1), "highest_node": int(prog.get("highest_node", 0) or 0), "completed": [int(x) for x in (prog.get("completed") or [])]}
+    completed = sorted({int(x) for x in (prog.get("completed") or []) if str(x).isdigit()})
+    # Trust actual completed nodes over any stale highest_node value from older builds.
+    # This prevents old Quick Hunt/adventure bugs from pushing the map forward incorrectly.
+    contiguous = 0
+    for n in range(1, 11):
+        if n in completed:
+            contiguous = n
+        else:
+            break
+    return {"tier": int(prog.get("tier", 1) or 1), "highest_node": contiguous, "completed": completed}
 
 def build_adventure_map(user: dict) -> dict:
     prog = get_adventure_progress(user)
@@ -1422,11 +1477,25 @@ async def adventure_start(node_no: int, user=Depends(get_current_user)):
     await db.users.update_one({"id": user["id"]}, {"$set": {"stamina": new_stamina, "stamina_updated_at": now}})
     enemy = gen_adventure_enemy(tier, node_no)
     await db.battle_previews.update_one(
-        {"user_id": user["id"]},
-        {"$set": {"enemy": enemy, "turn": "player", "created_at": now, "battle_mode": "adventure", "adventure_tier": tier, "adventure_node": node_no}},
+        battle_state_query(user["id"], BATTLE_MODE_ADVENTURE),
+        {"$set": {"user_id": user["id"], "enemy": enemy, "turn": "player", "created_at": now, "battle_mode": BATTLE_MODE_ADVENTURE, "adventure_tier": tier, "adventure_node": node_no}},
         upsert=True,
     )
-    return {"ok": True, "enemy": enemy, "mode": "adventure", "tier": tier, "node": node_no, "stamina": new_stamina, "stamina_max": stamina_max(user["level"])}
+    await set_active_battle_mode(user["id"], BATTLE_MODE_ADVENTURE)
+    user["active_battle_mode"] = BATTLE_MODE_ADVENTURE
+    totals, equipped = await compute_totals(user["id"])
+    class_state = equipped_affinity(equipped, user.get("class_affinity"))
+    main = main_weapon_from(equipped)
+    skills = build_player_skills(class_state, equipped)
+    payload = {
+        "ok": True, "enemy": enemy, "mode": BATTLE_MODE_ADVENTURE, "difficulty_tier": user.get("difficulty_tier", 1),
+        "tier": tier, "adventure_tier": tier, "node": node_no, "adventure_node": node_no,
+        "class_state": class_state, "main_weapon": main, "totals": totals, "skills": skills, "turn": "player", "battle_active": True,
+        "change_enemy_seconds": 0, "change_enemy_ready": False,
+    }
+    payload.update(stamina_display_payload(user))
+    payload.update(sigil_display_payload(user))
+    return payload
 
 
 # ---------------- Character / stats ----------------
@@ -2118,11 +2187,14 @@ def gen_enemy(tier: int, salt: str = "") -> dict:
         "blind_turns": 0, "xp_reward": int(m.get("xp", 10)) + tier * 2, "gold_reward": int(m.get("gold", 5)) + tier,
     }
 
-async def ensure_battle_state(user: dict) -> dict:
-    preview = await db.battle_previews.find_one({"user_id": user["id"]})
+async def ensure_battle_state(user: dict, mode: str = BATTLE_MODE_QUICK) -> dict:
+    mode = normalize_battle_mode(mode)
+    preview = await db.battle_previews.find_one(battle_state_query(user["id"], mode))
     if preview and preview.get("enemy"):
         enemy = preview["enemy"]; enemy.pop("_id", None) if isinstance(enemy, dict) else None
-        return {"enemy": enemy, "turn": preview.get("turn", "player"), "started": True, "user": user}
+        await set_active_battle_mode(user["id"], mode)
+        user["active_battle_mode"] = mode
+        return {"enemy": enemy, "turn": preview.get("turn", "player"), "started": True, "user": user, "preview": preview}
 
     if int(user.get("stamina", 0) or 0) < 1:
         raise HTTPException(400, "Not enough Battle Stamina (1 required)")
@@ -2140,12 +2212,14 @@ async def ensure_battle_state(user: dict) -> dict:
 
     enemy = gen_enemy(user.get("difficulty_tier", 1), salt=user["id"] + str(now.timestamp()))
     await db.battle_previews.update_one(
-        {"user_id": user["id"]},
-        {"$set": {"enemy": enemy, "turn": "player", "created_at": now, "battle_mode": "quick"},
+        battle_state_query(user["id"], BATTLE_MODE_QUICK),
+        {"$set": {"user_id": user["id"], "enemy": enemy, "turn": "player", "created_at": now, "battle_mode": BATTLE_MODE_QUICK},
          "$unset": {"adventure_tier": "", "adventure_node": ""}},
         upsert=True,
     )
-    return {"enemy": enemy, "turn": "player", "started": False, "user": user}
+    await set_active_battle_mode(user["id"], BATTLE_MODE_QUICK)
+    user["active_battle_mode"] = BATTLE_MODE_QUICK
+    return {"enemy": enemy, "turn": "player", "started": False, "user": user, "preview": {"battle_mode": BATTLE_MODE_QUICK}}
 
 
 @api.get("/talents")
@@ -2198,10 +2272,12 @@ async def reset_talents(body: TalentResetIn, user=Depends(get_current_user)):
 
 @api.get("/battle/preview")
 async def battle_preview(user=Depends(get_current_user)):
-    state = await ensure_battle_state(user)
+    # /battle/preview is Quick Hunt only. Adventure nodes are started through /adventure/start/{node}.
+    # This separation prevents an Adventure enemy from replacing the player's saved Quick Hunt enemy.
+    state = await ensure_battle_state(user, BATTLE_MODE_QUICK)
     user = state.get("user", user)
     enemy = state["enemy"]
-    preview = await db.battle_previews.find_one({"user_id": user["id"]})
+    preview = await db.battle_previews.find_one(battle_state_query(user["id"], BATTLE_MODE_QUICK))
     change_seconds = seconds_until_change_enemy(preview)
     totals, equipped = await compute_totals(user["id"])
     class_state = equipped_affinity(equipped, user.get("class_affinity"))
@@ -2225,13 +2301,14 @@ async def battle_preview(user=Depends(get_current_user)):
 
 @api.post("/battle/skip")
 async def battle_skip(user=Depends(get_current_user)):
-    preview = await db.battle_previews.find_one({"user_id": user["id"]})
+    preview = await db.battle_previews.find_one(battle_state_query(user["id"], BATTLE_MODE_QUICK))
     remaining = seconds_until_change_enemy(preview)
     if remaining > 0:
         raise HTTPException(400, f"Enemy can be changed again in {remaining} seconds")
     tier = user.get("difficulty_tier", 1)
     enemy = gen_enemy(tier, salt=user["id"] + "-skip-" + uuid.uuid4().hex[:6])
-    await db.battle_previews.update_one({"user_id": user["id"]}, {"$set": {"enemy": enemy, "turn": "player", "created_at": now_utc(), "changed_enemy_at": now_utc()}}, upsert=True)
+    await db.battle_previews.update_one(battle_state_query(user["id"], BATTLE_MODE_QUICK), {"$set": {"user_id": user["id"], "battle_mode": BATTLE_MODE_QUICK, "enemy": enemy, "turn": "player", "created_at": now_utc(), "changed_enemy_at": now_utc()}}, upsert=True)
+    await set_active_battle_mode(user["id"], BATTLE_MODE_QUICK)
     return {"enemy": enemy, "turn": "player", "change_enemy_seconds": CHANGE_ENEMY_COOLDOWN_SECONDS, "change_enemy_ready": False}
 
 def enemy_attack_once(enemy: dict, p_hp: int, p_def: int, p_res: int, p_dex: int, p_mob: int, rng: random.Random, log: list[dict]) -> int:
@@ -2259,16 +2336,19 @@ def enemy_attack_once(enemy: dict, p_hp: int, p_def: int, p_res: int, p_dex: int
 
 @api.post("/battle/fight")
 async def battle_fight(body: BattleActionIn = BattleActionIn(), user=Depends(get_current_user)):
-    state = await ensure_battle_state(user)
+    # Prefer the mode supplied by the client. The old active_battle_mode fallback remains
+    # only for backwards compatibility. This prevents Adventure battles from leaking into Quick Hunt.
+    battle_mode = normalize_battle_mode(body.mode) if body.mode else active_battle_mode_for(user)
+    state = await ensure_battle_state(user, battle_mode)
     user = state.get("user", user)
     enemy = state["enemy"]
     enemy.pop("_id", None) if isinstance(enemy, dict) else None
-    preview_doc = await db.battle_previews.find_one({"user_id": user["id"]}) or {}
-    battle_mode = preview_doc.get("battle_mode", "quick")
+    preview_doc = await db.battle_previews.find_one(battle_state_query(user["id"], battle_mode)) or {}
+    battle_mode = preview_doc.get("battle_mode", battle_mode)
     adventure_node_no = int(preview_doc.get("adventure_node", 0) or 0)
     adventure_tier_no = int(preview_doc.get("adventure_tier", user.get("difficulty_tier", 1)) or 1)
     if state.get("turn") != "player":
-        await db.battle_previews.update_one({"user_id": user["id"]}, {"$set": {"turn": "player"}})
+        await db.battle_previews.update_one(battle_state_query(user["id"], battle_mode), {"$set": {"turn": "player"}})
 
     totals, equipped = await compute_totals(user["id"])
     class_state = equipped_affinity(equipped, user.get("class_affinity"))
@@ -2291,7 +2371,7 @@ async def battle_fight(body: BattleActionIn = BattleActionIn(), user=Depends(get
         flee_chance = min(85, max(25, 45 + (p_mob - enemy.get("mob",0))*8))
         escaped = rng.randint(1,100) <= flee_chance
         if escaped:
-            await db.battle_previews.delete_one({"user_id": user["id"]})
+            await db.battle_previews.delete_one(battle_state_query(user["id"], battle_mode))
             fresh = await db.users.find_one({"id": user["id"]}, {"_id":0,"password":0})
             return {"resolved": True, "win": False, "escaped": True, "log": [{"side":"player","kind":"flee","dmg":0,"msg":"You escaped!"}], "enemy": enemy, "rewards": {"xp":0,"gold":0,"item":None}, "user": fresh, "next_enemy": gen_enemy(user.get("difficulty_tier",1), salt=user["id"]+"flee"), "class_state": class_state, "main_weapon": main, "skills": skills, "turn": "player"}
         log.append({"side":"player","kind":"flee","dmg":0,"msg":"Escape failed!"})
@@ -2377,7 +2457,7 @@ async def battle_fight(body: BattleActionIn = BattleActionIn(), user=Depends(get
         fresh_for_daily = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password": 0})
         if fresh_for_daily:
             await auto_claim_completed_daily_goals(fresh_for_daily)
-        await db.battle_previews.delete_one({"user_id": user["id"]})
+        await db.battle_previews.delete_one(battle_state_query(user["id"], battle_mode))
     else:
         p_hp = enemy_attack_once(enemy, p_hp, p_def, p_res, p_dex, p_mob, rng, log)
         if p_hp <= 0:
@@ -2389,10 +2469,10 @@ async def battle_fight(body: BattleActionIn = BattleActionIn(), user=Depends(get
                 new_tier = max(1, new_tier-1)
                 await db.users.update_one({"id":user["id"]}, {"$set":{"hp":1,"mana":max(0,p_mana),"difficulty_tier":new_tier}, "$inc":{"battles_lost":1}})
                 next_enemy = gen_enemy(new_tier, salt=user["id"]+"preview-next-loss")
-            await db.battle_previews.delete_one({"user_id": user["id"]})
+            await db.battle_previews.delete_one(battle_state_query(user["id"], battle_mode))
         else:
             await db.users.update_one({"id":user["id"]}, {"$set":{"hp":max(1,p_hp),"mana":max(0,p_mana)}})
-            await db.battle_previews.update_one({"user_id": user["id"]}, {"$set": {"enemy": enemy, "turn": "player", "updated_at": now_utc()}}, upsert=True)
+            await db.battle_previews.update_one(battle_state_query(user["id"], battle_mode), {"$set": {"user_id": user["id"], "battle_mode": battle_mode, "enemy": enemy, "turn": "player", "updated_at": now_utc()}}, upsert=True)
             next_enemy = enemy
 
     fresh = await db.users.find_one({"id":user["id"]}, {"_id":0,"password":0})
@@ -2438,6 +2518,123 @@ async def drop_loot(user_id: str, tier: int) -> dict:
     item.pop("_id", None)
     return item
 
+
+# ---------------- Admin Foundation ----------------
+# Browser-only prototype admin panel. Do not expose admin controls inside the Expo app.
+# Local setup: add ADMIN_SECRET=your-local-admin-password to backend/.env.
+
+ADMIN_DATA_FILES = {
+    "enemies_shared": ROOT_DIR / "data" / "enemies" / "shared.json",
+    "enemies_quick_hunt": ROOT_DIR / "data" / "enemies" / "quick_hunt.json",
+    "enemies_tier_1_forest": ROOT_DIR / "data" / "enemies" / "adventure" / "tier_1_forest.json",
+    "adventure_tiers": ROOT_DIR / "data" / "adventure" / "tiers.json",
+    "game_config": ROOT_DIR / "data" / "config" / "game_config.json",
+    "store_gold": ROOT_DIR / "data" / "store" / "gold_store.json",
+}
+
+ADMIN_DATA_LABELS = {
+    "enemies_shared": "Shared Enemies",
+    "enemies_quick_hunt": "Quick Hunt Enemies",
+    "enemies_tier_1_forest": "Tier 1 Forest Nodes",
+    "adventure_tiers": "Adventure Tiers",
+    "game_config": "Game Config",
+    "store_gold": "Gold Store Items",
+}
+
+
+def admin_enabled() -> bool:
+    return bool((ADMIN_SECRET or "").strip())
+
+
+def require_admin_secret(x_admin_secret: Optional[str] = Header(default=None)):
+    if not admin_enabled():
+        raise HTTPException(503, "Admin panel disabled. Add ADMIN_SECRET to backend/.env and restart the server.")
+    if not x_admin_secret or x_admin_secret != ADMIN_SECRET:
+        raise HTTPException(401, "Invalid admin secret")
+    return True
+
+
+def read_admin_json_file(key: str) -> Any:
+    path = ADMIN_DATA_FILES.get(key)
+    if not path:
+        raise HTTPException(404, "Unknown admin data file")
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        default = [] if key.startswith("enemies_") or key.startswith("store_") or key == "adventure_tiers" else {}
+        path.write_text(json_dumps_pretty(default))
+    import json
+    try:
+        return json.loads(path.read_text())
+    except Exception as exc:
+        raise HTTPException(500, f"Could not read {key}: {exc}")
+
+
+def json_dumps_pretty(data: Any) -> str:
+    import json
+    return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+
+
+def write_admin_json_file(key: str, data: Any) -> dict:
+    path = ADMIN_DATA_FILES.get(key)
+    if not path:
+        raise HTTPException(404, "Unknown admin data file")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Round-trip through JSON serialization to fail fast on bad data.
+    path.write_text(json_dumps_pretty(data))
+    return {"ok": True, "key": key, "path": str(path.relative_to(ROOT_DIR))}
+
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_page():
+    admin_html = ROOT_DIR / "admin" / "index.html"
+    if not admin_html.exists():
+        return HTMLResponse("<h1>Barcodia Admin</h1><p>Admin UI file missing.</p>", status_code=500)
+    return HTMLResponse(admin_html.read_text())
+
+
+@api.get("/admin/status")
+async def admin_status():
+    return {
+        "enabled": admin_enabled(),
+        "message": "Admin enabled" if admin_enabled() else "Admin disabled. Add ADMIN_SECRET to backend/.env and restart.",
+        "available_files": list(ADMIN_DATA_FILES.keys()),
+    }
+
+
+@api.get("/admin/data")
+async def admin_list_data(_: bool = Depends(require_admin_secret)):
+    return {
+        "files": [
+            {"key": key, "label": ADMIN_DATA_LABELS.get(key, key), "path": str(path.relative_to(ROOT_DIR)), "exists": path.exists()}
+            for key, path in ADMIN_DATA_FILES.items()
+        ]
+    }
+
+
+@api.get("/admin/data/{key}")
+async def admin_get_data(key: str, _: bool = Depends(require_admin_secret)):
+    return {"key": key, "data": read_admin_json_file(key)}
+
+
+@api.put("/admin/data/{key}")
+async def admin_save_data(key: str, body: AdminConfigSaveIn, _: bool = Depends(require_admin_secret)):
+    return write_admin_json_file(key, body.data)
+
+
+@api.get("/admin/summary")
+async def admin_summary(_: bool = Depends(require_admin_secret)):
+    enemy_counts = {}
+    for key in ("enemies_shared", "enemies_quick_hunt", "enemies_tier_1_forest"):
+        data = read_admin_json_file(key)
+        enemy_counts[key] = len(data) if isinstance(data, list) else 0
+    tiers = read_admin_json_file("adventure_tiers")
+    store = read_admin_json_file("store_gold")
+    return {
+        "enemy_counts": enemy_counts,
+        "adventure_tiers": len(tiers) if isinstance(tiers, list) else 0,
+        "store_gold_items": len(store) if isinstance(store, list) else 0,
+        "config": read_admin_json_file("game_config"),
+    }
 
 # ---------------- App wiring ----------------
 

@@ -1,0 +1,23 @@
+[
+  {
+    "id": "starter_healing_phial",
+    "name": "Starter Healing Phial",
+    "slot": "consumable",
+    "rarity": "common",
+    "price_gold": 75,
+    "icon": "💖",
+    "element": "holy",
+    "level": 1,
+    "lore": "A simple restorative phial sold to new adventurers.",
+    "hp": 35,
+    "mana": 0,
+    "atk": 0,
+    "int_stat": 0,
+    "def_stat": 0,
+    "res": 0,
+    "dex": 0,
+    "mob": 0,
+    "listed": false,
+    "source": "admin_store"
+  }
+]
