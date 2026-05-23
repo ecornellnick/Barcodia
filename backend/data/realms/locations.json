@@ -41,7 +41,8 @@
               "width_pct": 14,
               "height_pct": 12,
               "action_type": "change_scene",
-              "linked_location": "bedroom_window"
+              "linked_location": "bedroom_window",
+              "color": ""
             },
             {
               "id": "bed",
@@ -51,7 +52,8 @@
               "y_pct": 52,
               "width_pct": 18,
               "height_pct": 12,
-              "action_type": "rest"
+              "action_type": "rest",
+              "color": ""
             },
             {
               "id": "kitchen_door",
@@ -62,13 +64,16 @@
               "width_pct": 14,
               "height_pct": 12,
               "action_type": "change_scene",
-              "linked_location": "kitchen"
+              "linked_location": "kitchen",
+              "color": ""
             }
           ],
           "location_id": "bedroom",
           "image_asset": "asset:realms/bedroom_clean.png",
           "description": "Real-world bedroom background used for bed/computer/window hotspots.",
-          "preset": true
+          "preset": true,
+          "category": "Core",
+          "locked": true
         },
         {
           "id": "bedroom_window",
@@ -77,23 +82,17 @@
           "type": "window",
           "image": "asset:realms/bedroom_window_day.png",
           "unlocked": true,
-          "hotspots": [
-            {
-              "id": "back_to_bedroom",
-              "label": "Back",
-              "icon": "←",
-              "x_pct": 10,
-              "y_pct": 10,
-              "width_pct": 16,
-              "height_pct": 10,
-              "action_type": "change_scene",
-              "linked_location": "bedroom"
-            }
-          ],
+          "hotspots": [],
           "location_id": "bedroom_window",
           "image_asset": "asset:realms/bedroom_window_day.png",
           "description": "Bedroom window view background.",
-          "preset": true
+          "preset": true,
+          "category": "Core",
+          "tags": [
+            "Core",
+            "Test"
+          ],
+          "locked": true
         },
         {
           "id": "kitchen",
@@ -112,13 +111,14 @@
               "width_pct": 16,
               "height_pct": 10,
               "action_type": "change_scene",
-              "linked_location": "bedroom"
+              "linked_location": "bedroom",
+              "color": ""
             },
             {
               "id": "mom",
               "label": "Mom",
               "icon": "♡",
-              "x_pct": 78.5,
+              "x_pct": 77.3,
               "y_pct": 26.3,
               "width_pct": 18,
               "height_pct": 16,
@@ -133,9 +133,9 @@
             },
             {
               "id": "hotspot_1779543712439",
-              "label": "Stove",
-              "x_pct": 10.9,
-              "y_pct": 34,
+              "label": "Fridge",
+              "x_pct": 14.3,
+              "y_pct": 36,
               "width_pct": 14,
               "height_pct": 10,
               "action_type": "inspect",
@@ -144,13 +144,17 @@
               "linked_location": "",
               "item_id": "",
               "target_id": "",
-              "condition_flag": ""
+              "condition_flag": "",
+              "icon": "✧",
+              "color": "rgba(14,165,233,.88)"
             }
           ],
           "location_id": "kitchen",
           "image_asset": "asset:realms/kitchen_day.png",
           "description": "Kitchen background for Mom and early story scenes.",
-          "preset": true
+          "preset": true,
+          "category": "Core",
+          "locked": true
         },
         {
           "id": "grocery_store",
@@ -161,7 +165,9 @@
           "unlocked": false,
           "location_id": "grocery_store",
           "description": "",
-          "hotspots": []
+          "hotspots": [],
+          "category": "Other / Future",
+          "image_asset": ""
         },
         {
           "id": "hotel",
@@ -172,7 +178,9 @@
           "unlocked": false,
           "location_id": "hotel",
           "description": "",
-          "hotspots": []
+          "hotspots": [],
+          "category": "Town / Shops",
+          "image_asset": ""
         },
         {
           "id": "coffee_shop",
@@ -183,7 +191,19 @@
           "unlocked": false,
           "location_id": "coffee_shop",
           "description": "",
-          "hotspots": []
+          "hotspots": [],
+          "category": "Town / Shops",
+          "image_asset": ""
+        },
+        {
+          "id": "new_location_1779559138047",
+          "name": "New Location",
+          "description": "",
+          "image": "",
+          "category": "Core",
+          "hotspots": [],
+          "location_id": "new_location_1779559138047",
+          "image_asset": ""
         }
       ]
     },
@@ -194,41 +214,6 @@
       "accent": "#A855F7",
       "locations": [
         {
-          "id": "whisperwood_forest",
-          "name": "Whisperwood Forest",
-          "subtitle": "",
-          "type": "forest",
-          "image": "asset:realms/whisperwood_beacon_clean.png",
-          "unlocked": true,
-          "current_default": true,
-          "hotspots": [
-            {
-              "id": "forest_path",
-              "label": "Forest Path",
-              "icon": "➜",
-              "x_pct": 56,
-              "y_pct": 62,
-              "width_pct": 22,
-              "height_pct": 12,
-              "action_type": "inspect"
-            },
-            {
-              "id": "resonance_beacon",
-              "label": "Beacon",
-              "icon": "✦",
-              "x_pct": 48,
-              "y_pct": 44,
-              "width_pct": 16,
-              "height_pct": 14,
-              "action_type": "open_dialogue"
-            }
-          ],
-          "location_id": "whisperwood_forest",
-          "image_asset": "asset:realms/whisperwood_beacon_clean.png",
-          "description": "Fantasy forest / Whisperwood background.",
-          "preset": true
-        },
-        {
           "id": "town_square",
           "name": "Town Square",
           "subtitle": "",
@@ -237,7 +222,9 @@
           "unlocked": true,
           "location_id": "town_square",
           "description": "",
-          "hotspots": []
+          "hotspots": [],
+          "category": "Town / Shops",
+          "image_asset": ""
         },
         {
           "id": "rusty_tavern",
@@ -248,7 +235,9 @@
           "unlocked": true,
           "location_id": "rusty_tavern",
           "description": "",
-          "hotspots": []
+          "hotspots": [],
+          "category": "Town / Shops",
+          "image_asset": ""
         },
         {
           "id": "blacksmith",
@@ -259,7 +248,9 @@
           "unlocked": true,
           "location_id": "blacksmith",
           "description": "",
-          "hotspots": []
+          "hotspots": [],
+          "category": "Town / Shops",
+          "image_asset": ""
         },
         {
           "id": "adventure_gate",
@@ -270,7 +261,43 @@
           "unlocked": true,
           "location_id": "adventure_gate",
           "description": "",
-          "hotspots": []
+          "hotspots": [],
+          "category": "Other / Future",
+          "image_asset": ""
+        },
+        {
+          "id": "whisperwood_forest",
+          "name": "Whisperwood Forest",
+          "subtitle": "",
+          "type": "forest",
+          "image": "asset:realms/whisperwood_beacon_clean.png",
+          "unlocked": true,
+          "current_default": true,
+          "hotspots": [
+            {
+              "id": "hotspot_1779561527592",
+              "label": "New Hotspot",
+              "x_pct": 62.4,
+              "y_pct": 26.1,
+              "width_pct": 14,
+              "height_pct": 10,
+              "action_type": "open_computer",
+              "icon": "💻",
+              "color": "rgba(14,165,233,.88)",
+              "linked_dialogue": "",
+              "story_scene_id": "",
+              "linked_location": "",
+              "item_id": "",
+              "target_id": "",
+              "condition_flag": ""
+            }
+          ],
+          "location_id": "whisperwood_forest",
+          "image_asset": "asset:realms/whisperwood_beacon_clean.png",
+          "description": "Fantasy forest / Whisperwood background.",
+          "category": "Core",
+          "preset": true,
+          "locked": true
         }
       ]
     }
