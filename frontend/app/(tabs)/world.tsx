@@ -39,18 +39,18 @@ function imageSource(image?: string): any {
 }
 
 function PercentHotspot({ hotspot, onPress }: { hotspot: RealmHotspot; onPress: () => void }) {
+  // x_pct / y_pct are treated as the CENTER of the hotspot in both Admin and Game.
+  // This keeps admin drag placement aligned with what appears in the running game.
   const left = `${Number(hotspot.x_pct ?? 20)}%` as any;
   const top = `${Number(hotspot.y_pct ?? 20)}%` as any;
-  const width = `${Number(hotspot.width_pct ?? 8)}%` as any;
-  const height = `${Number(hotspot.height_pct ?? 8)}%` as any;
   const circleColor = hotspot.color || "rgba(14,165,233,0.90)";
   return (
     <TouchableOpacity
       activeOpacity={0.86}
       onPress={onPress}
-      style={[styles.hotspot, { left, top, width, height }]}
+      style={[styles.hotspot, { left, top }]}
     >
-      <View style={[styles.hotspotCircle, { backgroundColor: circleColor }]}>
+      <View style={[styles.hotspotCircle, { backgroundColor: circleColor }]}> 
         <Text style={styles.hotspotIcon}>{hotspot.icon || iconForHotspot(hotspot)}</Text>
       </View>
       <Text style={styles.hotspotLabel}>{hotspot.label || hotspot.id || "Hotspot"}</Text>
@@ -58,14 +58,15 @@ function PercentHotspot({ hotspot, onPress }: { hotspot: RealmHotspot; onPress: 
   );
 }
 
+
 function iconForHotspot(hotspot: RealmHotspot): string {
   const action = hotspot.action_type || "inspect";
   if (action === "open_computer") return "▭";
   if (action === "rest") return "▰";
-  if (action === "change_scene") return "⌂";
+  if (action === "change_scene") return "➜";
   if (action === "give_item") return "✦";
   if (action === "open_dialogue") return "♡";
-  return "•";
+  return "✧";
 }
 
 function coerceHotspots(raw: any): RealmHotspot[] {
@@ -345,16 +346,16 @@ const styles = StyleSheet.create({
   sceneLayer: { flex: 1, backgroundColor: "transparent" },
   overlay: { flex: 1 },
   overlayCenter: { flex: 1, alignItems: "center", justifyContent: "center", padding: 18 },
-  content: { flex: 1, paddingTop: 78, paddingHorizontal: 18, paddingBottom: 112 },
+  content: { flex: 1, paddingTop: 0, paddingHorizontal: 0, paddingBottom: 0 },
   center: { flex: 1, backgroundColor: "#05070D", alignItems: "center", justifyContent: "center", gap: 12 },
   muted: { color: "#A0AEC0", fontWeight: "800" },
-  locationBadge: { alignSelf: "flex-start", maxWidth: "82%", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, backgroundColor: "rgba(4,8,16,0.60)", borderWidth: 1, borderColor: "rgba(255,255,255,0.13)" },
+  locationBadge: { position: "absolute", top: 78, left: 18, zIndex: 5, maxWidth: "82%", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, backgroundColor: "rgba(4,8,16,0.60)", borderWidth: 1, borderColor: "rgba(255,255,255,0.13)" },
   locationName: { color: "#fff", fontSize: 22, lineHeight: 25, fontWeight: "900", letterSpacing: 0.5, textShadowColor: "rgba(0,0,0,0.9)", textShadowRadius: 8 },
   realmName: { marginTop: 2, fontSize: 11, fontWeight: "900", letterSpacing: 1.2, textTransform: "uppercase" },
-  warning: { marginTop: 10, borderRadius: 14, padding: 10, backgroundColor: "rgba(120,30,30,0.55)", borderWidth: 1, borderColor: "rgba(255,120,120,0.35)" },
+  warning: { position: "absolute", top: 138, left: 18, right: 18, zIndex: 5, borderRadius: 14, padding: 10, backgroundColor: "rgba(120,30,30,0.55)", borderWidth: 1, borderColor: "rgba(255,120,120,0.35)" },
   warningText: { color: "#FFD8D8", fontSize: 12, fontWeight: "800" },
-  hotspot: { position: "absolute", alignItems: "center", justifyContent: "center" },
-  hotspotCircle: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: "rgba(255,255,255,0.92)", shadowColor: "#000", shadowOpacity: 0.45, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 8 },
+  hotspot: { position: "absolute", width: 92, minHeight: 76, marginLeft: -46, marginTop: -38, alignItems: "center", justifyContent: "center", zIndex: 8 },
+  hotspotCircle: { width: 50, height: 50, borderRadius: 25, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: "rgba(255,255,255,0.94)", shadowColor: "#22D3EE", shadowOpacity: 0.55, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 9 },
   hotspotIcon: { color: "#fff", fontSize: 22, fontWeight: "900" },
   hotspotLabel: { marginTop: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, overflow: "hidden", backgroundColor: "rgba(2,6,23,0.72)", color: "#E0F7FF", fontSize: 9, fontWeight: "900", letterSpacing: 0.4 },
   transitionOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 30 },
