@@ -51,6 +51,9 @@ export type DailyGoal = { key: string; label: string; target: number; progress: 
 export type DailyGoalsPayload = { date: string; goals: DailyGoal[]; all_done: boolean; claimed_all: boolean; complete_reward: number; premium_currency_key: string; premium_currency_name: string; currency_balance: number };
 export type AdventureNode = { node: number; kind: "normal" | "elite" | "miniboss" | "boss"; name: string; enemy: string; x: number; y: number; completed: boolean; unlocked: boolean; current: boolean };
 export type AdventureMap = { tier: number; name: string; subtitle: string; biome: string; background: string; accent: string; progress: { tier: number; highest_node: number; completed: number[] }; nodes: AdventureNode[] };
+export type RealmLocation = { id: string; name: string; subtitle?: string; type?: string; image?: string; unlocked?: boolean; current_default?: boolean; hotspots?: string[] };
+export type RealmInfo = { id: string; label: string; short_label?: string; accent?: string; locations: RealmLocation[] };
+export type RealmPayload = { current_realm: string; current_location_id: string; realm: RealmInfo; location: RealmLocation; realms: RealmInfo[] };
 export type ScanResult = Item;
 
 async function request<T>(path: string, options: { method?: string; body?: any; auth?: boolean } = {}): Promise<T> {
@@ -67,6 +70,63 @@ async function request<T>(path: string, options: { method?: string; body?: any; 
   return data as T;
 }
 
+const DEFAULT_REALMS: RealmInfo[] = [
+  {
+    id: "real",
+    label: "Real World",
+    short_label: "Real",
+    accent: "#38BDF8",
+    locations: [
+      { id: "bedroom", name: "Bedroom", subtitle: "", type: "home", image: "asset:realms/bedroom_clean.png", unlocked: true, current_default: true, hotspots: ["Desk", "Bed", "Window"] },
+      { id: "school", name: "School", subtitle: "", type: "school", image: "asset:realms/bedroom_clean.png", unlocked: true, hotspots: [] },
+      { id: "city_street", name: "City Street", subtitle: "", type: "street", image: "asset:realms/bedroom_clean.png", unlocked: true, hotspots: [] },
+      { id: "shopping_mall", name: "Shopping Mall", subtitle: "", type: "store", image: "asset:realms/bedroom_clean.png", unlocked: true, hotspots: [] },
+    ],
+  },
+  {
+    id: "fantasy",
+    label: "Fantasy Realm",
+    short_label: "Fantasy",
+    accent: "#A855F7",
+    locations: [
+      { id: "whisperwood_forest", name: "Whisperwood Forest", subtitle: "", type: "forest", image: "asset:realms/whisperwood_beacon_clean.png", unlocked: true, current_default: true, hotspots: ["Resonance Beacon", "Forest Path", "Traveler Camp"] },
+      { id: "town_elderglen", name: "Town of Elderglen", subtitle: "", type: "town", image: "asset:realms/whisperwood_beacon_clean.png", unlocked: true, hotspots: [] },
+      { id: "rusty_tavern", name: "The Rusty Tavern", subtitle: "", type: "tavern", image: "asset:realms/whisperwood_beacon_clean.png", unlocked: true, hotspots: [] },
+      { id: "ancient_ruins", name: "Ancient Ruins", subtitle: "", type: "ruins", image: "asset:realms/whisperwood_beacon_clean.png", unlocked: true, hotspots: [] },
+      { id: "adventure_gate", name: "Adventure Gate", subtitle: "", type: "adventure", image: "asset:realms/whisperwood_beacon_clean.png", unlocked: true, hotspots: [] },
+    ],
+  },
+];
+
+let fallbackRealmId = "real";
+let fallbackLocationId = "bedroom";
+
+function buildFallbackRealmPayload(realmId = fallbackRealmId, locationId = fallbackLocationId): RealmPayload {
+  const realm = DEFAULT_REALMS.find((r) => r.id === realmId) || DEFAULT_REALMS[0];
+  const location = realm.locations.find((l) => l.id === locationId) || realm.locations.find((l) => l.current_default) || realm.locations[0];
+  fallbackRealmId = realm.id;
+  fallbackLocationId = location.id;
+  return { current_realm: realm.id, current_location_id: location.id, realm, location, realms: DEFAULT_REALMS };
+}
+
+async function realmRequest(): Promise<RealmPayload> {
+  try {
+    return await request<RealmPayload>("/realm");
+  } catch (e: any) {
+    console.warn("[Barcodia] /api/realm unavailable, using bundled realm data:", e?.message || e);
+    return buildFallbackRealmPayload();
+  }
+}
+
+async function traverseRealmRequest(realm: string, location_id: string): Promise<RealmPayload> {
+  try {
+    return await request<RealmPayload>("/realm/traverse", { method: "POST", body: { realm, location_id } });
+  } catch (e: any) {
+    console.warn("[Barcodia] /api/realm/traverse unavailable, using bundled realm data:", e?.message || e);
+    return buildFallbackRealmPayload(realm, location_id);
+  }
+}
+
 export const api = {
   register: (email: string, password: string, username: string) => request<{ token: string; user: User }>("/auth/register", { method: "POST", body: { email, password, username }, auth: false }),
   login: (email: string, password: string) => request<{ token: string; user: User }>("/auth/login", { method: "POST", body: { email, password }, auth: false }),
@@ -78,6 +138,9 @@ export const api = {
   spendTalent: (talent_id: string) => request<TalentState>("/talents/spend", { method: "POST", body: { talent_id } }),
   resetTalents: () => request<TalentState>("/talents/reset", { method: "POST", body: { confirm: true } }),
   dailyGoals: () => request<DailyGoalsPayload>("/daily-goals"),
+  realm: () => realmRequest(),
+  traverseRealm: (realm: string, location_id: string) => traverseRealmRequest(realm, location_id),
+  restAtHome: () => request<User>("/realm/rest", { method: "POST" }),
   adventureMap: () => request<AdventureMap>("/adventure/map"),
   adventureStart: (node_no: number) => request<{ ok: boolean; enemy: Enemy; mode: string; tier: number; node: number; stamina: number; stamina_max: number }>(`/adventure/start/${node_no}`, { method: "POST" }),
   scan: (barcode: string) => request<ScanResult>("/scan", { method: "POST", body: { barcode } }),
