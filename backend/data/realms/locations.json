@@ -14,6 +14,170 @@
           "image": "asset:realms/bedroom_clean.png",
           "unlocked": true,
           "current_default": true,
+          "hotspots": [
+            {
+              "id": "computer",
+              "label": "Computer",
+              "icon": "▭",
+              "x_pct": 18,
+              "y_pct": 31,
+              "width_pct": 12,
+              "height_pct": 10,
+              "action_type": "open_computer"
+            },
+            {
+              "id": "window",
+              "label": "Window",
+              "icon": "□",
+              "x_pct": 51,
+              "y_pct": 22,
+              "width_pct": 14,
+              "height_pct": 12,
+              "action_type": "change_scene",
+              "linked_location": "bedroom_window"
+            },
+            {
+              "id": "bed",
+              "label": "Bed",
+              "icon": "▰",
+              "x_pct": 70,
+              "y_pct": 52,
+              "width_pct": 18,
+              "height_pct": 12,
+              "action_type": "rest"
+            },
+            {
+              "id": "kitchen_door",
+              "label": "Kitchen",
+              "icon": "⌂",
+              "x_pct": 82,
+              "y_pct": 62,
+              "width_pct": 14,
+              "height_pct": 12,
+              "action_type": "change_scene",
+              "linked_location": "kitchen"
+            },
+            {
+              "id": "hotspot_1779543673840",
+              "label": "New Hotspot",
+              "x_pct": 16.8,
+              "y_pct": 26.1,
+              "width_pct": 14,
+              "height_pct": 10,
+              "action_type": "inspect"
+            }
+          ],
+          "location_id": "bedroom",
+          "image_asset": "asset:realms/bedroom_clean.png",
+          "description": "Real-world bedroom background used for bed/computer/window hotspots.",
+          "preset": true
+        },
+        {
+          "id": "bedroom_window",
+          "name": "Bedroom Window",
+          "subtitle": "Looking outside",
+          "type": "window",
+          "image": "asset:realms/bedroom_window_day.png",
+          "unlocked": true,
+          "hotspots": [
+            {
+              "id": "back_to_bedroom",
+              "label": "Back",
+              "icon": "←",
+              "x_pct": 10,
+              "y_pct": 10,
+              "width_pct": 16,
+              "height_pct": 10,
+              "action_type": "change_scene",
+              "linked_location": "bedroom"
+            }
+          ],
+          "location_id": "bedroom_window",
+          "image_asset": "asset:realms/bedroom_window_day.png",
+          "description": "Bedroom window view background.",
+          "preset": true
+        },
+        {
+          "id": "kitchen",
+          "name": "Kitchen",
+          "subtitle": "Home kitchen",
+          "type": "home",
+          "image": "asset:realms/kitchen_day.png",
+          "unlocked": true,
+          "hotspots": [
+            {
+              "id": "back_to_bedroom",
+              "label": "Bedroom",
+              "icon": "←",
+              "x_pct": 12,
+              "y_pct": 12,
+              "width_pct": 16,
+              "height_pct": 10,
+              "action_type": "change_scene",
+              "linked_location": "bedroom"
+            },
+            {
+              "id": "mom",
+              "label": "Mom",
+              "icon": "♡",
+              "x_pct": 54,
+              "y_pct": 50,
+              "width_pct": 18,
+              "height_pct": 16,
+              "action_type": "open_dialogue"
+            },
+            {
+              "id": "hotspot_1779543712439",
+              "label": "Stove",
+              "x_pct": 91,
+              "y_pct": 7.7,
+              "width_pct": 14,
+              "height_pct": 10,
+              "action_type": "inspect",
+              "linked_dialogue": "",
+              "story_scene_id": "",
+              "linked_location": "",
+              "item_id": "",
+              "target_id": "",
+              "condition_flag": ""
+            }
+          ],
+          "location_id": "kitchen",
+          "image_asset": "asset:realms/kitchen_day.png",
+          "description": "Kitchen background for Mom and early story scenes.",
+          "preset": true
+        },
+        {
+          "id": "grocery_store",
+          "name": "Grocery Store",
+          "subtitle": "",
+          "type": "store",
+          "image": "",
+          "unlocked": false,
+          "location_id": "grocery_store",
+          "description": "",
+          "hotspots": []
+        },
+        {
+          "id": "hotel",
+          "name": "Hotel",
+          "subtitle": "",
+          "type": "rest",
+          "image": "",
+          "unlocked": false,
+          "location_id": "hotel",
+          "description": "",
+          "hotspots": []
+        },
+        {
+          "id": "coffee_shop",
+          "name": "Coffee Shop",
+          "subtitle": "",
+          "type": "social",
+          "image": "",
+          "unlocked": false,
+          "location_id": "coffee_shop",
+          "description": "",
           "hotspots": []
         }
       ]
@@ -32,6 +196,75 @@
           "image": "asset:realms/whisperwood_beacon_clean.png",
           "unlocked": true,
           "current_default": true,
+          "hotspots": [
+            {
+              "id": "forest_path",
+              "label": "Forest Path",
+              "icon": "➜",
+              "x_pct": 56,
+              "y_pct": 62,
+              "width_pct": 22,
+              "height_pct": 12,
+              "action_type": "inspect"
+            },
+            {
+              "id": "resonance_beacon",
+              "label": "Beacon",
+              "icon": "✦",
+              "x_pct": 48,
+              "y_pct": 44,
+              "width_pct": 16,
+              "height_pct": 14,
+              "action_type": "open_dialogue"
+            }
+          ],
+          "location_id": "whisperwood_forest",
+          "image_asset": "asset:realms/whisperwood_beacon_clean.png",
+          "description": "Fantasy forest / Whisperwood background.",
+          "preset": true
+        },
+        {
+          "id": "town_square",
+          "name": "Town Square",
+          "subtitle": "",
+          "type": "town",
+          "image": "",
+          "unlocked": true,
+          "location_id": "town_square",
+          "description": "",
+          "hotspots": []
+        },
+        {
+          "id": "rusty_tavern",
+          "name": "The Rusty Tavern",
+          "subtitle": "",
+          "type": "tavern",
+          "image": "",
+          "unlocked": true,
+          "location_id": "rusty_tavern",
+          "description": "",
+          "hotspots": []
+        },
+        {
+          "id": "blacksmith",
+          "name": "Blacksmith",
+          "subtitle": "",
+          "type": "shop",
+          "image": "",
+          "unlocked": true,
+          "location_id": "blacksmith",
+          "description": "",
+          "hotspots": []
+        },
+        {
+          "id": "adventure_gate",
+          "name": "Adventure Gate",
+          "subtitle": "",
+          "type": "adventure",
+          "image": "",
+          "unlocked": true,
+          "location_id": "adventure_gate",
+          "description": "",
           "hotspots": []
         }
       ]

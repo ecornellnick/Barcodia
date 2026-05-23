@@ -51,7 +51,8 @@ export type DailyGoal = { key: string; label: string; target: number; progress: 
 export type DailyGoalsPayload = { date: string; goals: DailyGoal[]; all_done: boolean; claimed_all: boolean; complete_reward: number; premium_currency_key: string; premium_currency_name: string; currency_balance: number };
 export type AdventureNode = { node: number; kind: "normal" | "elite" | "miniboss" | "boss"; name: string; enemy: string; x: number; y: number; completed: boolean; unlocked: boolean; current: boolean };
 export type AdventureMap = { tier: number; name: string; subtitle: string; biome: string; background: string; accent: string; progress: { tier: number; highest_node: number; completed: number[] }; nodes: AdventureNode[] };
-export type RealmLocation = { id: string; name: string; subtitle?: string; type?: string; image?: string; unlocked?: boolean; current_default?: boolean; hotspots?: string[] };
+export type RealmHotspot = { id?: string; label?: string; icon?: string; x_pct?: number; y_pct?: number; width_pct?: number; height_pct?: number; action_type?: string; linked_location?: string; linked_dialogue?: string; story_scene_id?: string; item_id?: string; quest_id?: string; battle_id?: string; target_id?: string; condition_flag?: string; archived?: boolean };
+export type RealmLocation = { id: string; name: string; subtitle?: string; type?: string; image?: string; unlocked?: boolean; current_default?: boolean; hotspots?: (string | RealmHotspot)[] };
 export type RealmInfo = { id: string; label: string; short_label?: string; accent?: string; locations: RealmLocation[] };
 export type RealmPayload = { current_realm: string; current_location_id: string; realm: RealmInfo; location: RealmLocation; realms: RealmInfo[] };
 export type ScanResult = Item;
@@ -77,7 +78,19 @@ const DEFAULT_REALMS: RealmInfo[] = [
     short_label: "Real",
     accent: "#38BDF8",
     locations: [
-      { id: "bedroom", name: "Bedroom", subtitle: "", type: "home", image: "asset:realms/bedroom_clean.png", unlocked: true, current_default: true, hotspots: ["Desk", "Bed", "Window"] },
+      { id: "bedroom", name: "Bedroom", subtitle: "", type: "home", image: "asset:realms/bedroom_clean.png", unlocked: true, current_default: true, hotspots: [
+        { id: "computer", label: "Computer", icon: "▭", x_pct: 18, y_pct: 31, width_pct: 12, height_pct: 10, action_type: "open_computer" },
+        { id: "window", label: "Window", icon: "□", x_pct: 51, y_pct: 22, width_pct: 14, height_pct: 12, action_type: "change_scene", linked_location: "bedroom_window" },
+        { id: "bed", label: "Bed", icon: "▰", x_pct: 70, y_pct: 52, width_pct: 18, height_pct: 12, action_type: "rest" },
+        { id: "kitchen_door", label: "Kitchen", icon: "⌂", x_pct: 82, y_pct: 62, width_pct: 14, height_pct: 12, action_type: "change_scene", linked_location: "kitchen" },
+      ] },
+      { id: "bedroom_window", name: "Bedroom Window", subtitle: "Looking outside", type: "window", image: "asset:realms/bedroom_window_day.png", unlocked: true, hotspots: [
+        { id: "back_to_bedroom", label: "Back", icon: "←", x_pct: 10, y_pct: 10, width_pct: 16, height_pct: 10, action_type: "change_scene", linked_location: "bedroom" },
+      ] },
+      { id: "kitchen", name: "Kitchen", subtitle: "Home kitchen", type: "home", image: "asset:realms/kitchen_day.png", unlocked: true, hotspots: [
+        { id: "back_to_bedroom", label: "Bedroom", icon: "←", x_pct: 12, y_pct: 12, width_pct: 16, height_pct: 10, action_type: "change_scene", linked_location: "bedroom" },
+        { id: "mom", label: "Mom", icon: "♡", x_pct: 54, y_pct: 50, width_pct: 18, height_pct: 16, action_type: "open_dialogue" },
+      ] },
       { id: "school", name: "School", subtitle: "", type: "school", image: "asset:realms/bedroom_clean.png", unlocked: true, hotspots: [] },
       { id: "city_street", name: "City Street", subtitle: "", type: "street", image: "asset:realms/bedroom_clean.png", unlocked: true, hotspots: [] },
       { id: "shopping_mall", name: "Shopping Mall", subtitle: "", type: "store", image: "asset:realms/bedroom_clean.png", unlocked: true, hotspots: [] },

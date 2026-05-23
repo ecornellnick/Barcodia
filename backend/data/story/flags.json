@@ -1,1 +1,44 @@
-{}
+[
+  {
+    "id": "new_flag_1779539873175",
+    "label": "FInd relic",
+    "type": "boolean",
+    "default": false,
+    "notes": ""
+  },
+  {
+    "id": "new_flag_1779539890867",
+    "label": "New Flag",
+    "type": "boolean",
+    "default": false,
+    "notes": ""
+  },
+  {
+    "id": "new_flag_1779539891367",
+    "label": "New Flag",
+    "type": "boolean",
+    "default": false,
+    "notes": ""
+  },
+  {
+    "id": "new_flag_1779539891542",
+    "label": "New Flag",
+    "type": "boolean",
+    "default": false,
+    "notes": ""
+  },
+  {
+    "id": "new_flag_1779539891709",
+    "label": "New Flag",
+    "type": "boolean",
+    "default": false,
+    "notes": ""
+  },
+  {
+    "id": "new_flag_1779539891867",
+    "label": "New Flag",
+    "type": "boolean",
+    "default": false,
+    "notes": ""
+  }
+]

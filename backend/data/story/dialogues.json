@@ -22,63 +22,19 @@
     "effects": []
   },
   {
-    "id": "story_scene_1779537455444",
-    "title": "New Story Scene",
-    "chapter": "Chapter 1 — The Beginning",
-    "scene_type": "Character Dialogue",
+    "id": "chapter_2_start_1779540332162",
+    "title": "Chapter 2 Opening Scene",
+    "chapter": "Chapter 2",
+    "scene_type": "Narration",
     "enabled": true,
     "location_id": "",
     "character_id": "",
-    "trigger_type": "tap_npc",
+    "trigger_type": "enter_location",
     "priority": 100,
     "conditions": [],
     "lines": [
       {
-        "type": "dialogue",
-        "speaker": "Narrator",
-        "portrait": "",
-        "text": ""
-      }
-    ],
-    "choices": [],
-    "effects": []
-  },
-  {
-    "id": "story_scene_1779537455594",
-    "title": "New Story Scene",
-    "chapter": "Chapter 1 — The Beginning",
-    "scene_type": "Character Dialogue",
-    "enabled": true,
-    "location_id": "",
-    "character_id": "",
-    "trigger_type": "tap_npc",
-    "priority": 100,
-    "conditions": [],
-    "lines": [
-      {
-        "type": "dialogue",
-        "speaker": "Narrator",
-        "portrait": "",
-        "text": ""
-      }
-    ],
-    "choices": [],
-    "effects": []
-  },
-  {
-    "id": "story_scene_1779537455744",
-    "title": "New Story Scene",
-    "chapter": "Chapter 1 — The Beginning",
-    "scene_type": "Character Dialogue",
-    "enabled": true,
-    "location_id": "",
-    "character_id": "",
-    "trigger_type": "tap_npc",
-    "priority": 100,
-    "conditions": [],
-    "lines": [
-      {
-        "type": "dialogue",
+        "type": "narration",
         "speaker": "Narrator",
         "portrait": "",
         "text": ""

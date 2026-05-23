@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
-import { api, RealmPayload } from "@/src/lib/api";
+import { api, RealmHotspot, RealmPayload } from "@/src/lib/api";
 import { COLORS } from "@/src/lib/theme";
 
 const BACKEND_BASE = process.env.EXPO_PUBLIC_BACKEND_URL?.replace(/\/api$/, "") || "";
@@ -20,12 +20,14 @@ const CHARACTER_IMAGE_SOURCES: Record<string, any> = {
   mom: require("../../assets/images/characters/mom_avatar.png"),
 };
 
-type WorldMode = "scene" | "computer" | "window" | "kitchen" | "rest";
+type WorldMode = "scene" | "computer" | "rest";
 
 type DialogueLine = {
   speaker?: string;
   body: string;
 };
+
+type ActiveDialogue = { lines: DialogueLine[]; speaker?: string } | null;
 
 function imageSource(image?: string): any {
   if (!image) return REALM_IMAGE_SOURCES["asset:realms/bedroom.png"];
@@ -36,13 +38,38 @@ function imageSource(image?: string): any {
   return REALM_IMAGE_SOURCES["asset:realms/bedroom.png"];
 }
 
-function Hotspot({ label, icon, left, top, onPress }: { label: string; icon: string; left: string; top: string; onPress: () => void }) {
+function PercentHotspot({ hotspot, onPress }: { hotspot: RealmHotspot; onPress: () => void }) {
+  const left = `${Number(hotspot.x_pct ?? 20)}%` as any;
+  const top = `${Number(hotspot.y_pct ?? 20)}%` as any;
+  const width = `${Number(hotspot.width_pct ?? 14)}%` as any;
+  const height = `${Number(hotspot.height_pct ?? 10)}%` as any;
   return (
-    <TouchableOpacity activeOpacity={0.86} onPress={onPress} style={[styles.hotspot, { left: left as any, top: top as any }]}> 
-      <Text style={styles.hotspotIcon}>{icon}</Text>
-      <Text style={styles.hotspotLabel}>{label}</Text>
+    <TouchableOpacity
+      activeOpacity={0.86}
+      onPress={onPress}
+      style={[styles.hotspot, { left, top, width, height }]}
+    >
+      <Text style={styles.hotspotIcon}>{hotspot.icon || iconForHotspot(hotspot)}</Text>
+      <Text style={styles.hotspotLabel}>{hotspot.label || hotspot.id || "Hotspot"}</Text>
     </TouchableOpacity>
   );
+}
+
+function iconForHotspot(hotspot: RealmHotspot): string {
+  const action = hotspot.action_type || "inspect";
+  if (action === "open_computer") return "▭";
+  if (action === "rest") return "▰";
+  if (action === "change_scene") return "⌂";
+  if (action === "give_item") return "✦";
+  if (action === "open_dialogue") return "♡";
+  return "•";
+}
+
+function coerceHotspots(raw: any): RealmHotspot[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((h, i) => typeof h === "string" ? ({ id: h.toLowerCase().replace(/[^a-z0-9]+/g, "_"), label: h, x_pct: 20 + i * 15, y_pct: 50, width_pct: 12, height_pct: 10, action_type: "inspect" }) : h)
+    .filter((h) => h && !h.archived);
 }
 
 function TransitionOverlay({ label }: { label: string }) {
@@ -173,6 +200,7 @@ export default function WorldScreen() {
   const [transitionLabel, setTransitionLabel] = useState("");
   const [dialogueIndex, setDialogueIndex] = useState(0);
   const [dialogueDismissed, setDialogueDismissed] = useState(false);
+  const [activeDialogue, setActiveDialogue] = useState<ActiveDialogue>(null);
   const fade = useRef(new Animated.Value(1)).current;
 
   const load = useCallback(async () => {
@@ -188,10 +216,9 @@ export default function WorldScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => { setMode("scene"); setDialogueIndex(0);
-      setDialogueDismissed(false); load(); }, [load]));
+      setDialogueDismissed(false); setActiveDialogue(null); load(); }, [load]));
 
   const isReal = data?.current_realm !== "fantasy";
-  const isBedroom = isReal && (data?.current_location_id || "bedroom") === "bedroom";
   const accent = data?.realm?.accent || (isReal ? "#38BDF8" : "#A855F7");
   const image = useMemo(() => imageSource(data?.location?.image || (isReal ? "asset:realms/bedroom.png" : "asset:realms/whisperwood_beacon.png")), [data, isReal]);
 
@@ -213,6 +240,43 @@ export default function WorldScreen() {
     setTransitionLabel("Resting...");
     try { await api.restAtHome(); } catch {}
     setTimeout(() => { setMode("rest"); setTransitionLabel(""); }, 640);
+  };
+
+  const traverseToLocation = async (locationId: string, label = "Moving...") => {
+    if (!data?.current_realm || !locationId) return;
+    setTransitionLabel(label);
+    try {
+      const next = await api.traverseRealm(data.current_realm, locationId);
+      setData(next);
+      setMode("scene");
+      setDialogueIndex(0);
+      setDialogueDismissed(false);
+      setActiveDialogue(null);
+    } catch (e: any) {
+      setError(e.message || "Could not change scene.");
+    } finally {
+      setTimeout(() => setTransitionLabel(""), 360);
+    }
+  };
+
+  const openDialogueForHotspot = (hotspot: RealmHotspot) => {
+    const label = hotspot.label || "Narration";
+    const lines = label.toLowerCase().includes("mom") ? kitchenLines : [
+      { speaker: label, body: hotspot.story_scene_id || hotspot.linked_dialogue ? `This hotspot is linked to story scene: ${hotspot.story_scene_id || hotspot.linked_dialogue}.` : `You inspect ${label}.` },
+    ];
+    setActiveDialogue({ lines, speaker: label.toLowerCase().includes("mom") ? "Mom" : undefined });
+    setDialogueIndex(0);
+    setDialogueDismissed(false);
+  };
+
+  const handleHotspot = (hotspot: RealmHotspot) => {
+    const action = hotspot.action_type || "inspect";
+    if (action === "open_computer") return openMode("computer", "Opening Computer...");
+    if (action === "rest") return rest();
+    if (action === "change_scene") return traverseToLocation(hotspot.linked_location || hotspot.target_id || "", `Going to ${hotspot.label || "location"}...`);
+    if (action === "open_dialogue") return openDialogueForHotspot(hotspot);
+    if (action === "give_item") return openDialogueForHotspot({ ...hotspot, label: hotspot.label || "Item" });
+    return openDialogueForHotspot(hotspot);
   };
 
   const windowLines: DialogueLine[] = [
@@ -242,31 +306,12 @@ export default function WorldScreen() {
   if (mode === "computer") return <ComputerScreen onBack={() => setMode("scene")} />;
   if (mode === "rest") return <RestScreen onBack={() => setMode("scene")} />;
 
-  if (mode === "window") {
-    return (
-      <ImageBackground source={REALM_IMAGE_SOURCES["asset:realms/bedroom_window_day.png"]} style={styles.bg} resizeMode="cover">
-        <LinearGradient colors={["rgba(0,0,0,0.04)", "rgba(0,0,0,0.28)"]} style={styles.overlay}>
-          <TouchableOpacity onPress={returnToScene} style={styles.miniBack}><Text style={styles.miniBackText}>← Back</Text></TouchableOpacity>
-          {!dialogueDismissed ? <DialogueBox lines={windowLines} index={dialogueIndex} onNext={() => advanceDialogue(windowLines)} speaker="Narration" /> : null}
-        </LinearGradient>
-      </ImageBackground>
-    );
-  }
-
-  if (mode === "kitchen") {
-    return (
-      <ImageBackground source={REALM_IMAGE_SOURCES["asset:realms/kitchen_day.png"]} style={styles.bg} resizeMode="cover">
-        <LinearGradient colors={["rgba(0,0,0,0.08)", "rgba(0,0,0,0.42)"]} style={styles.overlay}>
-          <TouchableOpacity onPress={returnToScene} style={styles.miniBack}><Text style={styles.miniBackText}>← Back</Text></TouchableOpacity>
-          {!dialogueDismissed ? <DialogueBox lines={kitchenLines} index={dialogueIndex} onNext={() => advanceDialogue(kitchenLines)} /> : null}
-        </LinearGradient>
-      </ImageBackground>
-    );
-  }
-
   if (loading && !data) {
     return <View style={styles.center}><ActivityIndicator color={COLORS.cyan} /><Text style={styles.muted}>Locating realm...</Text></View>;
   }
+
+  const adminHotspots = coerceHotspots(data?.location?.hotspots);
+  const dialogueToShow = activeDialogue && !dialogueDismissed ? activeDialogue.lines : null;
 
   return (
     <ImageBackground source={image} style={styles.bg} resizeMode="cover">
@@ -278,16 +323,12 @@ export default function WorldScreen() {
               <Text style={[styles.realmName, { color: accent }]}>{data?.realm?.label || (isReal ? "Real World" : "Fantasy Realm")}</Text>
             </View>
 
-            {isBedroom ? (
-              <>
-                <Hotspot label="Computer" icon="▭" left="18%" top="31%" onPress={() => openMode("computer", "Opening Computer...")} />
-                <Hotspot label="Window" icon="□" left="51%" top="22%" onPress={() => openMode("window", "Looking Outside...")} />
-                <Hotspot label="Bed" icon="▰" left="70%" top="52%" onPress={rest} />
-                <Hotspot label="Kitchen" icon="⌂" left="82%" top="62%" onPress={() => openMode("kitchen", "Walking to Kitchen...")} />
-              </>
-            ) : null}
+            {adminHotspots.map((hotspot, idx) => (
+              <PercentHotspot key={hotspot.id || `${hotspot.label}-${idx}`} hotspot={hotspot} onPress={() => handleHotspot(hotspot)} />
+            ))}
 
             {error ? <View style={styles.warning}><Text style={styles.warningText}>Using local realm data. {error}</Text></View> : null}
+            {dialogueToShow ? <DialogueBox lines={dialogueToShow} index={dialogueIndex} onNext={() => advanceDialogue(dialogueToShow)} speaker={activeDialogue?.speaker} /> : null}
           </View>
         </LinearGradient>
       </Animated.View>
@@ -309,7 +350,7 @@ const styles = StyleSheet.create({
   realmName: { marginTop: 2, fontSize: 11, fontWeight: "900", letterSpacing: 1.2, textTransform: "uppercase" },
   warning: { marginTop: 10, borderRadius: 14, padding: 10, backgroundColor: "rgba(120,30,30,0.55)", borderWidth: 1, borderColor: "rgba(255,120,120,0.35)" },
   warningText: { color: "#FFD8D8", fontSize: 12, fontWeight: "800" },
-  hotspot: { position: "absolute", alignItems: "center", justifyContent: "center", width: 68, height: 68, marginLeft: -34, marginTop: -34, borderRadius: 34, backgroundColor: "rgba(2,12,24,0.66)", borderWidth: 2, borderColor: "rgba(56,189,248,0.88)", shadowOpacity: 0, shadowRadius: 0, elevation: 0 },
+  hotspot: { position: "absolute", alignItems: "center", justifyContent: "center", borderRadius: 18, backgroundColor: "rgba(2,12,24,0.62)", borderWidth: 2, borderColor: "rgba(56,189,248,0.88)", shadowOpacity: 0, shadowRadius: 0, elevation: 0 },
   hotspotIcon: { color: "#fff", fontSize: 23, fontWeight: "900" },
   hotspotLabel: { marginTop: 3, color: "#E0F7FF", fontSize: 9, fontWeight: "900", letterSpacing: 0.4 },
   transitionOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 30 },

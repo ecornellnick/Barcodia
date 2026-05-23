@@ -1483,7 +1483,19 @@ DEFAULT_REALM_DATA = {
             "short_label": "Real",
             "accent": "#38BDF8",
             "locations": [
-                {"id": "bedroom", "name": "Bedroom", "subtitle": "", "type": "home", "image": "asset:realms/bedroom_clean.png", "unlocked": True, "current_default": True, "hotspots": ["Desk", "Bed", "Window"]},
+                {"id": "bedroom", "name": "Bedroom", "subtitle": "", "type": "home", "image": "asset:realms/bedroom_clean.png", "unlocked": True, "current_default": True, "hotspots": [
+                    {"id": "computer", "label": "Computer", "icon": "▭", "x_pct": 18, "y_pct": 31, "width_pct": 12, "height_pct": 10, "action_type": "open_computer"},
+                    {"id": "window", "label": "Window", "icon": "□", "x_pct": 51, "y_pct": 22, "width_pct": 14, "height_pct": 12, "action_type": "change_scene", "linked_location": "bedroom_window"},
+                    {"id": "bed", "label": "Bed", "icon": "▰", "x_pct": 70, "y_pct": 52, "width_pct": 18, "height_pct": 12, "action_type": "rest"},
+                    {"id": "kitchen_door", "label": "Kitchen", "icon": "⌂", "x_pct": 82, "y_pct": 62, "width_pct": 14, "height_pct": 12, "action_type": "change_scene", "linked_location": "kitchen"}
+                ]},
+                {"id": "bedroom_window", "name": "Bedroom Window", "subtitle": "Looking outside", "type": "window", "image": "asset:realms/bedroom_window_day.png", "unlocked": True, "hotspots": [
+                    {"id": "back_to_bedroom", "label": "Back", "icon": "←", "x_pct": 10, "y_pct": 10, "width_pct": 16, "height_pct": 10, "action_type": "change_scene", "linked_location": "bedroom"}
+                ]},
+                {"id": "kitchen", "name": "Kitchen", "subtitle": "Home kitchen", "type": "home", "image": "asset:realms/kitchen_day.png", "unlocked": True, "hotspots": [
+                    {"id": "back_to_bedroom", "label": "Bedroom", "icon": "←", "x_pct": 12, "y_pct": 12, "width_pct": 16, "height_pct": 10, "action_type": "change_scene", "linked_location": "bedroom"},
+                    {"id": "mom", "label": "Mom", "icon": "♡", "x_pct": 54, "y_pct": 50, "width_pct": 18, "height_pct": 16, "action_type": "open_dialogue"}
+                ]},
                 {"id": "grocery_store", "name": "Grocery Store", "subtitle": "", "type": "store", "image": "", "unlocked": False},
                 {"id": "hotel", "name": "Hotel", "subtitle": "", "type": "rest", "image": "", "unlocked": False},
                 {"id": "coffee_shop", "name": "Coffee Shop", "subtitle": "", "type": "social", "image": "", "unlocked": False},
@@ -1508,17 +1520,80 @@ DEFAULT_REALM_DATA = {
 REALM_DATA_FILE = ROOT_DIR / "data" / "realms" / "locations.json"
 
 
+def normalize_realm_data(data: Any) -> dict:
+    """Repair old admin saves and keep realm data in the backend shape.
+
+    Older admin builds accidentally saved realm_locations as a flat list, or even
+    as [[realms...]]. The game expects {"realms": [{... locations: [...] }]}.
+    This normalizer accepts all of those shapes and returns the canonical one.
+    """
+    if isinstance(data, dict) and isinstance(data.get("realms"), list):
+        realms = data.get("realms") or []
+    elif isinstance(data, list) and len(data) == 1 and isinstance(data[0], list) and all(isinstance(x, dict) and "locations" in x for x in data[0]):
+        realms = data[0]
+    elif isinstance(data, list) and all(isinstance(x, dict) and "locations" in x for x in data):
+        realms = data
+    elif isinstance(data, list):
+        # Treat a flat admin location list as locations and group by realm_id.
+        real_locations = []
+        fantasy_locations = []
+        for loc in data:
+            if not isinstance(loc, dict):
+                continue
+            clean = dict(loc)
+            realm_id = clean.pop("realm_id", clean.pop("realm", None)) or ("fantasy" if str(clean.get("id", "")).startswith("whisper") else "real")
+            if realm_id == "fantasy":
+                fantasy_locations.append(clean)
+            else:
+                real_locations.append(clean)
+        realms = [
+            {"id": "real", "label": "Real World", "short_label": "Real", "accent": "#38BDF8", "locations": real_locations},
+            {"id": "fantasy", "label": "Fantasy Realm", "short_label": "Fantasy", "accent": "#A855F7", "locations": fantasy_locations},
+        ]
+    else:
+        realms = DEFAULT_REALM_DATA["realms"]
+
+    # Merge in required default locations without overwriting admin hotspot edits.
+    out_realms = []
+    defaults_by_id = {r.get("id"): r for r in DEFAULT_REALM_DATA["realms"]}
+    for realm in realms:
+        if not isinstance(realm, dict):
+            continue
+        rid = realm.get("id") or "real"
+        default_realm = defaults_by_id.get(rid, {})
+        merged = {**default_realm, **realm}
+        locs = [l for l in (realm.get("locations") or []) if isinstance(l, dict)]
+        by_id = {l.get("id") or l.get("location_id") or l.get("name"): l for l in locs}
+        for dloc in default_realm.get("locations", []):
+            did = dloc.get("id")
+            if did not in by_id:
+                locs.append(dloc)
+            else:
+                existing = by_id[did]
+                for k, v in dloc.items():
+                    existing.setdefault(k, v)
+        merged["locations"] = locs
+        out_realms.append(merged)
+    if not any(r.get("id") == "real" for r in out_realms):
+        out_realms.append(defaults_by_id["real"])
+    if not any(r.get("id") == "fantasy" for r in out_realms):
+        out_realms.append(defaults_by_id["fantasy"])
+    return {"realms": out_realms}
+
+
 def read_realm_data() -> dict:
     REALM_DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
     if not REALM_DATA_FILE.exists():
         REALM_DATA_FILE.write_text(json_dumps_pretty(DEFAULT_REALM_DATA))
     import json
     try:
-        data = json.loads(REALM_DATA_FILE.read_text())
+        raw = json.loads(REALM_DATA_FILE.read_text())
     except Exception:
-        data = DEFAULT_REALM_DATA
-    if not isinstance(data, dict) or not isinstance(data.get("realms"), list):
-        data = DEFAULT_REALM_DATA
+        raw = DEFAULT_REALM_DATA
+    data = normalize_realm_data(raw)
+    # Persist repairs so bad old shapes do not keep breaking admin/game.
+    if data != raw:
+        REALM_DATA_FILE.write_text(json_dumps_pretty(data))
     return data
 
 
@@ -2791,6 +2866,7 @@ ADMIN_DATA_FILES = {
     "story_characters": ROOT_DIR / "data" / "story" / "characters.json",
     "story_flags": ROOT_DIR / "data" / "story" / "flags.json",
     "story_quests": ROOT_DIR / "data" / "story" / "quests.json",
+    "story_items": ROOT_DIR / "data" / "story" / "items.json",
 }
 
 ADMIN_DATA_LABELS = {
@@ -2805,6 +2881,7 @@ ADMIN_DATA_LABELS = {
     "story_characters": "Story Characters",
     "story_flags": "Story Flags",
     "story_quests": "Story Quests",
+    "story_items": "Story Items / Equipment",
 }
 
 
@@ -2828,7 +2905,7 @@ def read_admin_json_file(key: str) -> Any:
         path.parent.mkdir(parents=True, exist_ok=True)
         if key == "realm_locations":
             default = DEFAULT_REALM_DATA
-        elif key in {"story_dialogues", "story_characters", "story_quests"}:
+        elif key in {"story_dialogues", "story_characters", "story_quests", "story_items"}:
             default = []
         elif key == "story_flags":
             default = {}
@@ -2855,6 +2932,8 @@ def write_admin_json_file(key: str, data: Any) -> dict:
         raise HTTPException(404, "Unknown admin data file")
     path.parent.mkdir(parents=True, exist_ok=True)
     # Round-trip through JSON serialization to fail fast on bad data.
+    if key == "realm_locations":
+        data = normalize_realm_data(data)
     path.write_text(json_dumps_pretty(data))
     return {"ok": True, "key": key, "path": str(path.relative_to(ROOT_DIR))}
 
