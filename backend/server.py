@@ -59,6 +59,9 @@ db = client[DB_NAME]
 
 app = FastAPI(title="Barcodia API")
 app.mount("/assets", StaticFiles(directory=str(FRONTEND_IMAGES_DIR)), name="assets")
+ADMIN_STATIC_DIR = ROOT_DIR / "admin" / "assets"
+ADMIN_STATIC_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/admin/assets", StaticFiles(directory=str(ADMIN_STATIC_DIR)), name="admin_assets")
 api = APIRouter(prefix="/api")
 bearer = HTTPBearer(auto_error=False)
 

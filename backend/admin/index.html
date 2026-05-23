@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Barcodia Admin — Story Builder</title>
+  <title>Barcadia Admin — RPG CMS</title>
   <style>
     :root{
       --bg:#050b14;--bg2:#07111f;--panel:#0b1828;--panel2:#122238;--panel3:#172b46;
@@ -22,22 +22,223 @@
     .chapters-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}.search{margin-bottom:10px}.scene-list{display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 255px);overflow:auto;padding-right:4px}.chapter-label{color:#dbeafe;font-weight:1000;margin:12px 2px 4px;font-size:13px;letter-spacing:.02em}.scene-card{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.035);border-radius:14px;padding:11px;cursor:pointer}.scene-card.active{border-color:var(--cyan);background:rgba(56,189,248,.13)}.scene-card strong{display:block;font-size:14px}.meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.chip{display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(56,189,248,.28);background:rgba(56,189,248,.08);border-radius:999px;padding:4px 8px;font-size:11px;color:#c7edff;font-weight:950}.chip.green{border-color:rgba(52,211,153,.32);background:rgba(52,211,153,.09);color:#a7f3d0}.chip.gold{border-color:rgba(251,191,36,.32);background:rgba(251,191,36,.09);color:#fde68a}.chip.red{border-color:rgba(251,113,133,.32);background:rgba(251,113,133,.09);color:#fecdd3}.hero{padding:18px;border-bottom:1px solid rgba(255,255,255,.08);background:linear-gradient(135deg,rgba(56,189,248,.13),rgba(192,132,252,.08))}.hero-row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.title-input{font-size:25px;font-weight:1000;background:rgba(0,0,0,.18);border-color:rgba(255,255,255,.1)}.rows{display:grid;grid-template-columns:1fr 1fr;gap:12px}.rows3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}.box{border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:13px;margin-top:13px;background:rgba(255,255,255,.035)}.box-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}.box h3{margin:0;font-size:16px}.timeline{display:flex;flex-direction:column;gap:10px}.line-card{border:1px solid rgba(255,255,255,.11);background:rgba(5,11,20,.65);border-radius:16px;padding:12px}.line-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.speaker{font-weight:1000;color:#bae6fd}.line-card textarea{min-height:72px;background:#081426}.choice-card{border-color:rgba(192,132,252,.36);background:rgba(88,28,135,.13)}.narration-card{border-color:rgba(251,191,36,.32);background:rgba(120,83,0,.11)}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.right-panel{position:sticky;top:92px}.empty{padding:30px;text-align:center;color:var(--muted)}.flow{display:flex;flex-direction:column;gap:8px}.flow-node{display:flex;align-items:center;gap:10px}.dot{width:13px;height:13px;border-radius:50%;background:var(--cyan);box-shadow:0 0 16px rgba(56,189,248,.5)}.arrow{height:18px;border-left:2px solid rgba(56,189,248,.35);margin-left:6px}.list{display:flex;flex-direction:column;gap:8px;max-height:650px;overflow:auto}.item{border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.035);padding:10px;border-radius:12px;cursor:pointer}.item.active{border-color:var(--cyan);background:rgba(56,189,248,.12)}.item strong{display:block}.item span{color:var(--muted);font-size:12px;font-weight:700}.raw{white-space:pre-wrap;background:#050b14;border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,.1);max-height:620px;overflow:auto}.advanced{display:none}.advanced.open{display:block}.mini-grid{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}.hotspot-stage{position:relative;min-height:360px;border:1px solid rgba(56,189,248,.25);border-radius:18px;overflow:hidden;background:linear-gradient(135deg,#0f172a,#111827);display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:900}.hotspot-stage img{width:100%;height:100%;object-fit:cover;display:block}.hotspot-box{position:absolute;border:2px solid rgba(251,191,36,.9);background:rgba(251,191,36,.18);border-radius:10px;display:flex;align-items:flex-start;justify-content:center;padding:3px;color:#fff;font-size:11px;font-weight:1000;text-shadow:0 1px 2px #000;cursor:pointer}.hotspot-box.active{border-color:rgba(52,211,153,.95);background:rgba(52,211,153,.2)}.empty-soft{border:1px dashed rgba(148,163,184,.3);border-radius:14px;padding:16px;color:var(--muted);font-weight:800;text-align:center}.toolbar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}.scene-tools{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}.chapter-header{width:100%;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:9px 10px;margin-top:10px;color:#dbeafe;font-weight:1000;cursor:pointer}.chapter-count{font-size:11px;color:var(--muted)}.scene-list.compact .scene-card{display:none}.scene-list .chapter-body.collapsed{display:none}.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:50;display:none;align-items:center;justify-content:center;padding:20px}.modal-backdrop.open{display:flex}.modal{width:min(860px,96vw);max-height:88vh;overflow:auto;border:1px solid rgba(56,189,248,.45);background:#07111f;border-radius:22px;box-shadow:0 35px 100px rgba(0,0,0,.65)}.modal-head{position:sticky;top:0;background:#081426;border-bottom:1px solid rgba(255,255,255,.1);padding:16px;display:flex;align-items:center;justify-content:space-between}.modal-body{padding:18px}.help-steps{display:grid;gap:12px}.help-steps .box{margin-top:0}.empty-soft{border:1px dashed rgba(148,163,184,.25);border-radius:14px;padding:14px;color:var(--muted);background:rgba(255,255,255,.025)}
     .hotspot-stage .real-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}.missing-bg{padding:20px;text-align:left;color:#fecdd3;background:rgba(127,29,29,.28);border:1px solid rgba(251,113,133,.45);border-radius:14px;max-width:88%;line-height:1.35}.missing-bg input{margin-top:8px}.hotspot-stage{aspect-ratio:9/16;min-height:560px;max-height:760px;width:min(100%,430px);margin:0 auto;border-radius:22px}.stage-wide .hotspot-stage{aspect-ratio:16/9;max-height:none;width:100%;min-height:auto}.hotspot-stage.game-frame:before{content:'Game preview frame — placement matches the in-game touch layer';position:absolute;left:10px;top:10px;z-index:2;background:rgba(2,6,23,.68);border:1px solid rgba(255,255,255,.16);padding:4px 8px;border-radius:999px;font-size:10px;color:#dbeafe;font-weight:1000}.hotspot-box{border:0!important;background:transparent!important;padding:0!important;align-items:center!important;justify-content:center!important;overflow:visible;transform:translate(-50%,-50%)}.hotspot-pin{width:48px;height:48px;border-radius:999px;background:radial-gradient(circle at 35% 25%,rgba(255,255,255,.95),rgba(14,165,233,.95) 28%,rgba(12,74,110,.95) 100%);border:2px solid rgba(219,234,254,.96);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 5px rgba(14,165,233,.20),0 0 24px rgba(56,189,248,.45),0 12px 30px rgba(0,0,0,.55);font-size:22px;text-shadow:0 2px 5px rgba(0,0,0,.65)}.hotspot-box.active .hotspot-pin{background:radial-gradient(circle at 35% 25%,rgba(255,255,255,.95),rgba(52,211,153,.95) 30%,rgba(6,78,59,.96) 100%);box-shadow:0 0 0 7px rgba(52,211,153,.24),0 0 28px rgba(52,211,153,.55),0 12px 32px rgba(0,0,0,.58)}.hotspot-pin-label{position:absolute;top:52px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(2,6,23,.78);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:4px 9px;font-size:11px}.hotspot-palette{display:flex;gap:8px;flex-wrap:wrap}.hotspot-palette button{min-width:42px}.hotspot-select-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}.hotspot-select-row{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.035);border-radius:12px;padding:8px}.hotspot-select-row.active{border-color:rgba(52,211,153,.75);background:rgba(52,211,153,.11)}.drag-note{color:#a7f3d0;font-size:12px;font-weight:900;margin-top:8px}.action-help{margin-top:8px;border:1px solid rgba(56,189,248,.22);background:rgba(56,189,248,.07);border-radius:12px;padding:10px;color:#cfe8ff;font-weight:800;line-height:1.35}.modal.wide{width:min(1300px,98vw)}.full-preview-stage{width:min(100%,980px);margin:0 auto}.full-preview-stage .hotspot-stage{width:100%;max-height:none}
     @media(max-width:1250px){.shell{grid-template-columns:230px 1fr}.right-panel{position:static}.story-main,.right-panel{grid-column:2}.scene-panel{grid-column:2}.nav-panel{grid-row:1/4}.scene-list{max-height:360px}}
-    @media(max-width:850px){.shell,.rows,.rows3,.mini-grid{grid-template-columns:1fr}.nav-panel,.scene-panel,.story-main,.right-panel{grid-column:auto;grid-row:auto}.nav{flex-direction:row;overflow:auto}.nav button{white-space:nowrap}.topbar{align-items:flex-start;flex-direction:column}}
+
+    /* v15 — Barcadia fantasy CMS visual skin. Cosmetic only. */
+    :root{
+      --bg:#090611;--bg2:#12091d;--panel:#100d18;--panel2:#1a1326;--panel3:#251a35;
+      --line:#6f4d24;--line2:#b88a3b;--cyan:#8b5cf6;--blue:#38bdf8;--text:#fff7e8;
+      --muted:#b9a993;--green:#65d98f;--red:#ff6b7f;--gold:#f5c66a;--purple:#a855f7;
+      --ornate-gold:#c99a42;--ornate-dark:#07040c;--rune-blue:#40c7ff;
+    }
+    body{
+      background:
+        radial-gradient(circle at 50% -18%,rgba(245,198,106,.24),transparent 26%),
+        radial-gradient(circle at 80% 10%,rgba(139,92,246,.18),transparent 28%),
+        radial-gradient(circle at 5% 25%,rgba(56,189,248,.10),transparent 24%),
+        linear-gradient(160deg,#07040c 0%,#100719 44%,#05060d 100%);
+      color:var(--text);
+    }
+    body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:54px 54px;mask-image:linear-gradient(to bottom,rgba(0,0,0,.4),rgba(0,0,0,.08));}
+    header{padding:0;border-bottom:1px solid rgba(201,154,66,.45);background:linear-gradient(180deg,rgba(8,5,14,.96),rgba(14,8,24,.92));box-shadow:0 12px 48px rgba(0,0,0,.45)}
+    .topbar{max-width:1680px;padding:16px 24px;margin:0 auto;position:relative;}
+    .topbar:after{content:"";position:absolute;left:24px;right:24px;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,rgba(245,198,106,.85),rgba(64,199,255,.55),rgba(245,198,106,.85),transparent)}
+    .brand h1{font-family:Georgia, 'Times New Roman', serif;font-size:36px;line-height:1;font-weight:900;letter-spacing:.045em;text-transform:uppercase;color:#ffe7ae;text-shadow:0 0 18px rgba(245,198,106,.35),0 2px 0 #2a1404;margin:0;}
+    .brand-small{display:inline-block;margin-left:10px;padding:5px 12px;border:1px solid rgba(201,154,66,.65);border-radius:999px;background:linear-gradient(180deg,rgba(82,48,9,.72),rgba(31,17,5,.82));font-size:13px;vertical-align:middle;color:#f7d586;letter-spacing:.12em;}
+    .brand-crystal{color:#7dd3fc;text-shadow:0 0 18px rgba(56,189,248,.8);font-size:.78em;}
+    .brand .sub{color:#d7c6a7;font-weight:900;letter-spacing:.02em;margin-top:8px}
+    .fantasy-banner{max-width:1680px;margin:0 auto 16px;padding:0 24px 18px;}
+    .banner-art{position:relative;overflow:hidden;min-height:126px;border:1px solid rgba(201,154,66,.55);border-radius:24px;background:
+      linear-gradient(110deg,rgba(12,8,20,.92),rgba(34,20,47,.50),rgba(8,19,31,.86)),
+      radial-gradient(circle at 18% 80%,rgba(64,199,255,.26),transparent 18%),
+      radial-gradient(circle at 62% 22%,rgba(245,198,106,.36),transparent 18%),
+      linear-gradient(90deg,#14071f,#1c1230 34%,#0f2532 65%,#14091b);
+      box-shadow:inset 0 0 0 1px rgba(255,235,174,.10),0 18px 70px rgba(0,0,0,.45);
+    }
+    .banner-art:before{content:"";position:absolute;inset:0;background:
+      radial-gradient(ellipse at 58% 60%,rgba(245,198,106,.22),transparent 20%),
+      linear-gradient(135deg,transparent 0 36%,rgba(255,255,255,.05) 37%,transparent 38% 100%);opacity:.95;}
+    .banner-art:after{content:"✦     ⚔     ✦";position:absolute;right:36px;bottom:18px;color:rgba(245,198,106,.55);font-size:25px;letter-spacing:18px;text-shadow:0 0 14px rgba(245,198,106,.35)}
+    .banner-copy{position:relative;z-index:1;padding:22px 28px;max-width:760px;}
+    .banner-copy .eyebrow{color:#f5c66a;text-transform:uppercase;font-weight:1000;font-size:11px;letter-spacing:.18em;margin-bottom:8px;}
+    .banner-copy h2{font-family:Georgia,'Times New Roman',serif;font-size:30px;color:#fff7df;text-shadow:0 0 16px rgba(245,198,106,.22);margin:0 0 7px;}
+    .banner-copy p{margin:0;color:#dac9ad;font-weight:850;line-height:1.35;}
+    .banner-towers{position:absolute;right:135px;bottom:-8px;width:210px;height:105px;opacity:.55;background:linear-gradient(to top,rgba(4,7,12,.75),rgba(4,7,12,.1));clip-path:polygon(0 100%,0 55%,10% 55%,10% 36%,18% 36%,18% 12%,25% 36%,34% 36%,34% 58%,43% 58%,43% 28%,50% 0,57% 28%,57% 58%,70% 58%,70% 42%,78% 42%,78% 18%,86% 42%,96% 42%,96% 100%);filter:drop-shadow(0 0 18px rgba(64,199,255,.25));}
+    .panel,.box,.line-card,.item,.scene-card{border-color:rgba(201,154,66,.28);background:linear-gradient(180deg,rgba(20,15,30,.88),rgba(8,10,18,.84));box-shadow:inset 0 0 0 1px rgba(255,255,255,.035),0 18px 56px rgba(0,0,0,.28)}
+    .panel{border-radius:24px;position:relative}.panel:before{content:"";position:absolute;inset:8px;border:1px solid rgba(245,198,106,.08);border-radius:18px;pointer-events:none}.pad,.nav,.devbox{position:relative;z-index:1}
+    .nav .logo{font-family:Georgia,'Times New Roman',serif;color:#f7d586;font-size:14px;letter-spacing:.18em}.nav button{border-color:rgba(201,154,66,.22);background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.018));color:#f7e3be}.nav button.active{border-color:rgba(245,198,106,.72);background:linear-gradient(90deg,rgba(139,92,246,.30),rgba(56,189,248,.12));box-shadow:0 0 28px rgba(139,92,246,.18),inset 0 0 0 1px rgba(255,255,255,.06)}
+    button{border-color:rgba(201,154,66,.45);background:linear-gradient(180deg,rgba(77,53,96,.52),rgba(28,19,42,.86));color:#fff3d6;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+    button.good{border-color:rgba(245,198,106,.68);background:linear-gradient(180deg,rgba(74,45,119,.74),rgba(35,21,72,.90));color:#fff0c2}button.danger{border-color:rgba(255,107,127,.58);background:linear-gradient(180deg,rgba(102,31,45,.64),rgba(40,15,25,.86))}button.ghost{border-color:rgba(201,154,66,.25);background:rgba(255,255,255,.035)}
+    input,select,textarea{border-color:rgba(201,154,66,.25);background:rgba(4,7,15,.82);color:#fff7e8;border-radius:12px}input:focus,select:focus,textarea:focus{border-color:rgba(245,198,106,.78);box-shadow:0 0 0 3px rgba(245,198,106,.12)}label{color:#f4d18b}.section-title{font-family:Georgia,'Times New Roman',serif;color:#fff4d8;letter-spacing:.01em}.hero{background:linear-gradient(135deg,rgba(91,33,182,.20),rgba(201,154,66,.10));border-bottom-color:rgba(201,154,66,.25)}
+    .chip{border-color:rgba(201,154,66,.35);background:rgba(201,154,66,.10);color:#fbe7b5}.chip.green{border-color:rgba(101,217,143,.42);background:rgba(101,217,143,.12)}.chip.gold{border-color:rgba(245,198,106,.45);background:rgba(245,198,106,.12)}.chip.red{border-color:rgba(255,107,127,.42);background:rgba(255,107,127,.12)}
+    .hotspot-stage{border-color:rgba(201,154,66,.55);box-shadow:inset 0 0 0 1px rgba(255,255,255,.045),0 18px 58px rgba(0,0,0,.30)}
+    .modal{border-color:rgba(201,154,66,.55);background:#0d0915}.modal-head{background:#130d1f;border-bottom-color:rgba(201,154,66,.25)}.status-pill{border-color:rgba(101,217,143,.38);background:rgba(38,98,71,.30);color:#baf8cf}.status-pill.warn{border-color:rgba(245,198,106,.45);background:rgba(97,67,17,.32);color:#ffe9b7}.status-pill.bad{border-color:rgba(255,107,127,.45);background:rgba(110,30,45,.30);color:#ffd2d8}
+
+
+    /* v17 — compact mockup-style brand header. Cosmetic only.
+       Swap backend/admin/assets/barcadia-logo-mockup.png and backend/admin/assets/barcadia-banner-mockup.png later for finalized art.
+       Backend also serves these through /admin/assets so the images resolve in local admin. */
+    .topbar{max-width:1680px;padding:10px 24px 8px;margin:0 auto;display:grid;grid-template-columns:260px minmax(420px,1fr) auto;align-items:center;gap:18px;}
+    .brand-art-shell{min-width:0;}
+    .brand-logo-img{display:block;width:250px;max-width:100%;height:104px;object-fit:contain;object-position:left center;filter:drop-shadow(0 0 18px rgba(245,198,106,.22));}
+    .brand-logo-fallback{display:none;font-family:Georgia,'Times New Roman',serif;font-size:36px;line-height:1;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#ffe7ae;text-shadow:0 0 18px rgba(245,198,106,.35),0 2px 0 #2a1404;}
+    .brand-logo-fallback small{display:block;margin-top:7px;font-size:13px;letter-spacing:.18em;color:#f7d586;}
+    .brand-banner-img-wrap{height:104px;min-width:0;border:1px solid rgba(201,154,66,.38);border-radius:16px;overflow:hidden;background:linear-gradient(90deg,#100719,#05060d);box-shadow:inset 0 0 0 1px rgba(255,255,255,.035),0 12px 42px rgba(0,0,0,.38);position:relative;}
+    .brand-banner-fallback{display:none;height:100%;align-items:center;justify-content:center;text-align:center;padding:0 28px;color:#f7d586;font-family:Georgia,'Times New Roman',serif;font-weight:900;letter-spacing:.08em;background:radial-gradient(circle at 25% 40%,rgba(124,58,237,.28),transparent 35%),linear-gradient(90deg,#17091d,#07101b 55%,#120817);}
+    .brand-banner-img{width:100%;height:100%;object-fit:cover;object-position:center;display:block;}
+    .fantasy-shelf-divider{height:22px;position:relative;border-top:1px solid rgba(245,198,106,.48);border-bottom:1px solid rgba(77,43,14,.9);background:linear-gradient(180deg,#3a220f 0%,#9b6a2e 22%,#523015 48%,#201008 52%,#080408 100%);box-shadow:0 10px 28px rgba(0,0,0,.55),0 0 20px rgba(245,198,106,.12);}
+    .fantasy-shelf-divider:before{content:"";position:absolute;left:34px;right:34px;top:6px;height:6px;border-radius:999px;background:linear-gradient(90deg,transparent,rgba(255,232,163,.58),rgba(126,78,26,.3),rgba(255,232,163,.58),transparent);opacity:.9;}
+    .fantasy-shelf-divider:after{content:"✦";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44px;height:22px;display:grid;place-items:center;color:#ffe6a7;background:radial-gradient(circle,rgba(80,34,135,.9),rgba(24,10,36,.2) 65%,transparent 72%);text-shadow:0 0 12px rgba(245,198,106,.8);}
+    .statusbar{justify-content:flex-end;}
+    header{position:sticky;top:0;z-index:5;}
+    main.wrap{padding-top:18px;}
+
+
+    /* v18 — mockup-matched fantasy header + cleaner Locations/Hotspots skin. Cosmetic only. */
+    header{background:linear-gradient(180deg,#05020b 0%,#10051a 72%,#08040d 100%);border-bottom:0;box-shadow:0 16px 45px rgba(0,0,0,.55);}
+    .topbar{max-width:1680px;padding:0 8px;margin:0 auto;display:grid!important;grid-template-columns:270px minmax(720px,1266px) 1fr;align-items:start;gap:0;min-height:205px;}
+    .brand-art-shell{width:270px;height:205px;overflow:hidden;}
+    .brand-logo-img{width:270px!important;height:205px!important;object-fit:contain!important;object-position:left top!important;display:block;filter:drop-shadow(0 0 18px rgba(245,198,106,.26));}
+    .brand-logo-fallback{height:205px;align-content:center;text-align:center;border:1px solid rgba(201,154,66,.55);}
+    .brand-banner-img-wrap{height:205px!important;max-width:1266px;width:100%;border:0!important;border-radius:0!important;overflow:hidden;background:#05020b;box-shadow:none!important;}
+    .brand-banner-img{width:100%!important;height:205px!important;object-fit:contain!important;object-position:left top!important;display:block;}
+    .brand-banner-fallback{height:205px;border:1px solid rgba(201,154,66,.45)}
+    .fantasy-shelf-divider{height:48px;background-image:url('/admin/assets/barcadia-wood-divider.png');background-size:100% 48px;background-repeat:no-repeat;background-position:center top;border:0;box-shadow:0 16px 34px rgba(0,0,0,.7),0 0 28px rgba(168,85,247,.18);}
+    .fantasy-shelf-divider:before,.fantasy-shelf-divider:after{display:none!important;}
+    .wrap{max-width:1680px;padding-top:0;}
+    .shell{grid-template-columns:270px 390px minmax(580px,1fr) 410px;gap:14px;}
+    .nav-panel{border-radius:0 0 18px 18px;border-color:rgba(201,154,66,.46);background:linear-gradient(180deg,rgba(20,10,20,.95),rgba(5,5,11,.97));box-shadow:inset 0 0 0 1px rgba(255,255,255,.035),0 24px 80px rgba(0,0,0,.5);}
+    .nav .logo{color:#d8b56b;letter-spacing:.14em;font-family:Georgia,'Times New Roman',serif;}
+    .nav button{border-color:rgba(201,154,66,.28);background:linear-gradient(180deg,rgba(40,24,50,.62),rgba(8,8,15,.76));color:#f6deb0;border-radius:6px 16px 6px 16px;}
+    .nav button.active{border-color:rgba(168,85,247,.75);background:linear-gradient(90deg,rgba(91,33,182,.62),rgba(30,18,58,.78));box-shadow:inset 0 0 0 1px rgba(245,198,106,.24),0 0 24px rgba(168,85,247,.23);}
+    .nav-utility{margin:12px;border:1px solid rgba(201,154,66,.42);border-radius:10px;background:radial-gradient(circle at 20% 20%,rgba(168,85,247,.22),transparent 44%),rgba(0,0,0,.24);display:flex;flex-direction:column;gap:10px;color:#f6deb0;}
+    .utility-row{display:flex;align-items:center;gap:10px;color:#f6deb0;font-weight:900;}
+    .utility-orb{width:24px;height:24px;border-radius:999px;display:inline-block;border:1px solid rgba(245,198,106,.45);background:radial-gradient(circle,#86efac,#14532d);box-shadow:0 0 16px rgba(52,211,153,.35);}
+    .status-pill{border:0;background:transparent!important;padding:0;color:#dfffe8;font-size:13px;}
+    .utility-btn{display:flex;align-items:center;gap:10px;text-align:left;width:100%;border-color:rgba(201,154,66,.24);background:rgba(255,255,255,.035);color:#f6deb0;border-radius:12px;padding:9px 10px;font-size:13px;}
+    .utility-btn span{width:24px;height:24px;border-radius:999px;display:inline-grid;place-items:center;background:rgba(168,85,247,.22);border:1px solid rgba(201,154,66,.36);}
+    .scene-panel,.story-main,.right-panel,.panel{border-color:rgba(201,154,66,.38);background:linear-gradient(180deg,rgba(14,10,20,.92),rgba(5,7,13,.94));box-shadow:inset 0 0 0 1px rgba(255,255,255,.025),0 22px 80px rgba(0,0,0,.38);}
+    .section-title,.box h3{font-family:Georgia,'Times New Roman',serif;color:#ffe7ae;letter-spacing:.02em;}
+    label{color:#f6d68c;}
+    .item,.scene-card,.box,.line-card,.hotspot-select-row{border-color:rgba(201,154,66,.24);background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(0,0,0,.16));}
+    .item.active,.scene-card.active{border-color:rgba(168,85,247,.72);background:linear-gradient(90deg,rgba(88,28,135,.38),rgba(5,11,20,.56));}
+    button{border-color:rgba(201,154,66,.52);background:linear-gradient(180deg,rgba(76,29,149,.52),rgba(21,10,35,.75));color:#ffedbd;border-radius:7px;}
+    button.good{background:linear-gradient(180deg,rgba(88,28,135,.72),rgba(24,10,44,.82));border-color:rgba(168,85,247,.75);}
+    button.danger{background:linear-gradient(180deg,rgba(92,24,38,.72),rgba(30,10,20,.82));border-color:rgba(248,113,113,.55);}
+    input,select,textarea{background:rgba(3,5,12,.72);border-color:rgba(201,154,66,.28);color:#fff8e7;border-radius:7px;}
+    .hotspot-stage{border:1px solid rgba(201,154,66,.58);border-radius:4px;background:#07060a;box-shadow:inset 0 0 0 2px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04);}
+    .hotspot-stage.game-frame:before{display:none;}
+    .hotspot-pin{border-color:#c89b4a;box-shadow:0 0 0 3px rgba(2,6,23,.75),0 0 0 5px rgba(201,154,66,.45),0 0 24px rgba(64,199,255,.5),0 10px 28px rgba(0,0,0,.65)!important;}
+    .hotspot-pin-label{background:rgba(5,4,8,.86);border-color:rgba(201,154,66,.55);border-radius:7px;color:#fff5dc;}
+    .hotspot-select-row{grid-template-columns:auto 1fr auto auto;}
+    .right-panel{top:260px;}
+    .modal{border-color:rgba(201,154,66,.62);background:linear-gradient(180deg,#12071d,#05070d);}
+    .modal-head{background:linear-gradient(90deg,#18081f,#07060e);border-color:rgba(201,154,66,.35);}
+
+
+    /* v19 — tighten the mockup header and make Locations/Hotspots match the approved composition. */
+    header{position:relative!important;top:auto!important;padding:0!important;background:linear-gradient(180deg,#07030c,#12081f 82%,#05050a)!important;border-bottom:1px solid rgba(201,154,66,.45)!important;backdrop-filter:none!important;overflow:hidden;}
+    .topbar{max-width:none!important;width:100%!important;margin:0!important;display:grid!important;grid-template-columns:275px minmax(0,1fr)!important;gap:0!important;align-items:stretch!important;min-height:200px!important;padding:0!important;}
+    .brand-art-shell{width:275px!important;height:200px!important;overflow:hidden!important;}
+    .brand-logo-img{width:275px!important;height:200px!important;object-fit:cover!important;object-position:left top!important;display:block!important;filter:drop-shadow(0 0 18px rgba(245,198,106,.20));}
+    .brand-banner-img-wrap{height:200px!important;width:100%!important;max-width:none!important;border:0!important;border-radius:0!important;overflow:hidden!important;background:#05020b!important;box-shadow:none!important;}
+    .brand-banner-img{width:100%!important;height:200px!important;object-fit:cover!important;object-position:center top!important;display:block!important;}
+    .fantasy-shelf-divider{height:0!important;background:none!important;box-shadow:none!important;border:0!important;}
+    .wrap{max-width:none!important;width:100%!important;padding:0 24px 22px!important;margin-top:0!important;}
+    .shell{margin-top:18px!important;grid-template-columns:270px 390px minmax(680px,1fr) 410px!important;gap:14px!important;}
+    .right-panel{top:18px!important;}
+    .locations-main .pad{padding:0!important;}
+    .location-titlebar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:8px 10px 12px;}
+    .location-kicker{color:#b99cff;font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:900;}
+    .location-heading{display:flex;align-items:center;gap:12px;margin-top:2px;}
+    .location-heading h2{font-family:Georgia,'Times New Roman',serif;color:#ffe7ae;font-size:27px;margin:0;}
+    .location-tabs{display:flex;gap:0;margin:0 10px;border-bottom:1px solid rgba(201,154,66,.34);}
+    .location-tabs button{border-radius:8px 8px 0 0;margin-right:2px;background:rgba(0,0,0,.18);border-bottom:0;padding:10px 18px;}
+    .location-tabs button.active{background:linear-gradient(180deg,rgba(88,28,135,.62),rgba(24,10,44,.82));border-color:rgba(168,85,247,.72);}
+    .hotspot-workbench{margin:0 10px 12px;border:1px solid rgba(201,154,66,.42);background:rgba(0,0,0,.18);border-radius:4px 16px 4px 16px;padding:12px;}
+    .hotspot-workbench-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;}
+    .hotspot-workbench-head h3{margin:0;font-family:Georgia,'Times New Roman',serif;color:#ffe7ae;text-transform:uppercase;font-size:15px;letter-spacing:.04em;}
+    .hotspot-workbench-head .hint{margin:2px 0 0;}
+    .stage-wide .hotspot-stage,.hotspot-stage{width:100%!important;aspect-ratio:9/16!important;max-height:680px!important;min-height:560px!important;margin:0!important;}
+    .hotspot-stage .real-bg{object-fit:cover!important;}
+    .hotspot-select-list{margin:0 10px 12px!important;border:1px solid rgba(201,154,66,.38);border-radius:4px 16px 4px 16px;padding:12px;background:rgba(0,0,0,.16);}
+    .hotspot-select-list h3{font-family:Georgia,'Times New Roman',serif;color:#ffe7ae;text-transform:uppercase;font-size:15px;letter-spacing:.04em;}
+    .hotspot-select-row{display:grid!important;grid-template-columns:44px 1fr 110px 44px!important;align-items:center!important;gap:10px!important;border-radius:6px!important;}
+    .location-edit-collapsible{margin:0 10px 12px;border:1px solid rgba(201,154,66,.28);border-radius:4px 16px 4px 16px;background:rgba(0,0,0,.12);}
+    .location-edit-collapsible summary{cursor:pointer;padding:12px 14px;font-family:Georgia,'Times New Roman',serif;color:#ffe7ae;font-weight:900;}
+    .location-edit-collapsible .inside{padding:0 14px 14px;}
+    .right-panel .pad{padding:16px;}
+    .right-panel .section-title{font-size:22px;}
+    .hotspot-palette button{border-radius:9px;}
+    @media(max-width:1450px){.topbar{grid-template-columns:240px minmax(0,1fr)!important;min-height:175px!important}.brand-art-shell,.brand-logo-img{width:240px!important;height:175px!important}.brand-banner-img-wrap,.brand-banner-img{height:175px!important}.shell{grid-template-columns:245px 330px minmax(560px,1fr) 380px!important}}
+    @media(max-width:1450px){.topbar{grid-template-columns:230px minmax(680px,1fr)}.brand-art-shell,.brand-logo-img{width:230px!important}.shell{grid-template-columns:250px 340px minmax(520px,1fr) 370px}.statusbar{display:none!important}}
+
+    @media(max-width:1100px){.topbar{grid-template-columns:1fr;align-items:start}.brand-logo-img{height:78px}.brand-banner-img-wrap{height:86px}.statusbar{justify-content:flex-start}}
+
+    @media(max-width:850px){.shell,.rows,.rows3,.mini-grid{grid-template-columns:1fr}.nav-panel,.scene-panel,.story-main,.right-panel{grid-column:auto;grid-row:auto}.nav{flex-direction:row;overflow:auto}.nav button{white-space:nowrap}.topbar{grid-template-columns:1fr!important;min-height:auto}.brand-art-shell,.brand-logo-img{width:270px!important;height:160px!important}.brand-banner-img-wrap,.brand-banner-img{height:120px!important}}
+
+
+    /* v20 — remove horizontal scrolling while preserving the fantasy mockup layout. */
+    html,body{max-width:100%;overflow-x:hidden!important;}
+    header,.topbar,.wrap,.shell,.panel{max-width:100%!important;}
+    .topbar{grid-template-columns:clamp(190px,16vw,275px) minmax(0,1fr)!important;min-width:0!important;}
+    .brand-art-shell,.brand-logo-img{width:clamp(190px,16vw,275px)!important;}
+    .brand-banner-img-wrap{min-width:0!important;}
+    .brand-banner-img{object-fit:cover!important;object-position:center top!important;}
+    .wrap{padding-left:clamp(10px,1.2vw,20px)!important;padding-right:clamp(10px,1.2vw,20px)!important;overflow-x:hidden!important;}
+    .shell{
+      width:100%!important;
+      display:grid!important;
+      grid-template-columns:minmax(210px,15vw) minmax(260px,20vw) minmax(0,1fr) minmax(300px,23vw)!important;
+      gap:clamp(8px,.8vw,14px)!important;
+      overflow:visible!important;
+    }
+    .nav-panel,.scene-panel,.story-main,.right-panel,.panel{min-width:0!important;}
+    .scene-panel .pad,.story-main .pad,.right-panel .pad{min-width:0!important;}
+    input,select,textarea{min-width:0!important;}
+    .rows,.rows3{min-width:0!important;}
+    .right-panel{position:sticky!important;right:auto!important;}
+    .hotspot-select-row{grid-template-columns:38px minmax(0,1fr) minmax(74px,88px) 38px!important;}
+    .stage-wide .hotspot-stage,.hotspot-stage{min-height:0!important;height:auto!important;max-height:none!important;}
+    @media(max-width:1500px){
+      .topbar{grid-template-columns:210px minmax(0,1fr)!important;min-height:155px!important;}
+      .brand-art-shell,.brand-logo-img{width:210px!important;height:155px!important;}
+      .brand-banner-img-wrap,.brand-banner-img{height:155px!important;}
+      .shell{grid-template-columns:220px 300px minmax(0,1fr) 320px!important;}
+      .nav button{padding:11px 10px!important;font-size:14px!important;}
+      .section-title{font-size:18px!important;}
+      .right-panel .section-title{font-size:19px!important;}
+    }
+    @media(max-width:1220px){
+      .shell{grid-template-columns:220px minmax(0,1fr)!important;}
+      .nav-panel{grid-row:1 / span 3!important;}
+      .scene-panel,.story-main,.right-panel{grid-column:2!important;}
+      .right-panel{position:static!important;}
+    }
+    @media(max-width:850px){
+      .topbar{grid-template-columns:1fr!important;}
+      .brand-art-shell,.brand-logo-img{width:100%!important;height:120px!important;object-fit:contain!important;}
+      .brand-banner-img-wrap,.brand-banner-img{height:120px!important;}
+      .shell{grid-template-columns:1fr!important;}
+      .nav-panel,.scene-panel,.story-main,.right-panel{grid-column:auto!important;grid-row:auto!important;}
+    }
+
   </style>
 </head>
 <body>
   <header>
     <div class="topbar">
-      <div class="brand">
-        <h1>Barcodia Admin</h1>
-        <div class="sub">Local Dev Mode • RPG Maker-style game CMS • Story, triggers, quests, battles, locations</div>
+      <div class="brand brand-art-shell">
+        <!-- Swap these files later to change the CMS logo/banner without changing the admin logic. -->
+        <img class="brand-logo-img" src="/admin/assets/barcadia-logo-mockup.png" alt="Barcadia RPG CMS logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'" />
+        <div class="brand-logo-fallback">BARCADIA<small>RPG CMS</small></div>
       </div>
-      <div class="statusbar">
-        <span id="status" class="status-pill warn">Starting local admin…</span>
-        <button class="small" onclick="openHelp()">? How to use this page</button>
-        <button class="ghost small" onclick="toggleDevSecret()">Dev Secret</button>
+      <div class="brand-banner-img-wrap">
+        <img class="brand-banner-img" src="/admin/assets/barcadia-banner-mockup.png" alt="Barcadia fantasy banner" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+        <div class="brand-banner-fallback">BARCADIA FANTASY REALM BANNER</div>
       </div>
     </div>
+    <div class="fantasy-shelf-divider" aria-hidden="true"></div>
+
   </header>
   <div id="helpModal" class="modal-backdrop" onclick="closeHelp(event)">
     <div class="modal" onclick="event.stopPropagation()">
@@ -80,8 +281,10 @@
           <button data-tab="realms" onclick="showTab('realms')">🗺️ Locations / Hotspots</button>
           <button data-tab="archive" onclick="showTab('archive')">🗃️ Archive / Restore</button>
         </div>
-        <div class="devbox hint">
-          Built for authoring the game, not editing raw JSON. IDs are still saved underneath, but the admin should feel like a story CMS.
+        <div class="devbox nav-utility">
+          <div class="utility-row"><span class="utility-orb ok-orb"></span><span id="status" class="status-pill warn">Starting local admin…</span></div>
+          <button class="utility-btn" onclick="openHelp()"><span>?</span> How to use this page</button>
+          <button class="utility-btn" onclick="toggleDevSecret()"><span>🔒</span> Dev Secret</button>
         </div>
       </aside>
 
@@ -140,7 +343,7 @@ async function boot(saveSecret=false){try{if(saveSecret&&$('secret'))localStorag
 function renderError(e){$('leftPanel').innerHTML='<div class="pad"><h2 class="section-title">Admin not connected</h2><p class="muted">The password UI is disabled, but your backend may still require ADMIN_SECRET.</p><button class="good" onclick="toggleDevSecret()">Enter secret once</button></div>';$('mainPanel').innerHTML='<div class="empty"><h2>Could not load admin data</h2><p>'+esc(e.message)+'</p></div>';$('rightPanel').innerHTML='<div class="pad hint">To fully remove auth, the FastAPI admin route needs a local-dev bypass. This HTML update hides the password and auto-connects with a saved secret when the backend requires one.</div>'}
 function showTab(tab){state.tab=tab;document.querySelectorAll('.nav button[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));safeRender()}
 function safeRender(){try{ensureDataArrays();render()}catch(renderErr){console.error(renderErr);setStatus('CMS render error — recovered','bad');$('leftPanel').innerHTML='<div class="pad"><h2 class="section-title">Recovered from CMS error</h2><p class="muted">A page render failed, but the admin shell is still loaded.</p></div>';$('mainPanel').innerHTML='<div class="empty"><h2>Render error</h2><p>'+esc(renderErr.message)+'</p></div>';$('rightPanel').innerHTML='<div class="pad"><button class="good" onclick="showTab(&quot;story&quot;)">Back to Story Builder</button></div>'}}
-function render(){ensureDataArrays();if(!Object.keys(state.data).length){$('leftPanel').innerHTML='';$('mainPanel').innerHTML='<div class="empty"><h2>Loading Barcodia CMS…</h2></div>';$('rightPanel').innerHTML='';return}({story:renderStory,triggers:renderTriggers,flags:renderFlags,items:renderItems,quests:renderQuests,characters:renderCharacters,battles:renderBattles,realms:renderRealms,archive:renderArchive}[state.tab]||renderStory)()}
+function render(){ensureDataArrays();if(!Object.keys(state.data).length){$('leftPanel').innerHTML='';$('mainPanel').innerHTML='<div class="empty"><h2>Loading Barcadia CMS…</h2></div>';$('rightPanel').innerHTML='';return}({story:renderStory,triggers:renderTriggers,flags:renderFlags,items:renderItems,quests:renderQuests,characters:renderCharacters,battles:renderBattles,realms:renderRealms,archive:renderArchive}[state.tab]||renderStory)()}
 const helpText={
  story:{title:'How to use Story Builder',steps:['Use chapters to keep the game story organized. A chapter is just a folder/section for scenes.','Create one Story Scene for each moment that can happen in the game: Mom intro, window narration, forest discovery, pre-battle warning, post-battle result, etc.','Use Scene Setup to choose where the scene happens, who it belongs to, and what triggers it.','Use Dialogue Timeline to add dialogue, narration, and choices. Remove buttons remove the exact card. Up/down buttons reorder dialogue lines.','Use Show Only If to control story progression. Example: only show “Mom reacts to relic” if Forest Relic Found is true.','Use After Scene Completes for game changes after the player sees the scene: set flags, start quests, unlock locations, give items, or start battles.','Use Save Story Scene to save the current scene to memory and write the story file.']},
  triggers:{title:'How to use Trigger Builder',steps:['Triggers describe what causes content to happen. Example: tap an NPC, enter a location, inspect an object, use an item, complete a battle.','Use these as building blocks. Story scenes, quests, battles, and hotspots should all eventually point to trigger types.','Add new trigger types only when the game needs a new kind of player action.']},
@@ -188,7 +391,7 @@ function removeChoice(i){commitStoryScene(false);currentStory().choices.splice(i
 function newStoryScene(){const a=state.data[dataMap.story];const title='New Story Scene';a.push({id:'story_scene_'+Date.now(),title,chapter:'Chapter 1 — The Beginning',scene_type:'Character Dialogue',enabled:true,location_id:'',character_id:'',trigger_type:'tap_npc',priority:100,conditions:[],lines:[{type:'dialogue',speaker:'Narrator',portrait:'',text:''}],choices:[],effects:[]});state.selected.story=a.length-1;renderStory()}
 function newChapter(){const name=prompt('Chapter name?','Chapter '+(new Set((asArray(state.data[dataMap.story])).map(x=>x.chapter)).size+1)); if(!name)return; const a=state.data[dataMap.story];a.push({id:slug(name)+'_start_'+Date.now(),title:name+' Opening Scene',chapter:name,scene_type:'Narration',enabled:true,location_id:'',character_id:'',trigger_type:'enter_location',priority:100,conditions:[],lines:[{type:'narration',speaker:'Narrator',portrait:'',text:''}],choices:[],effects:[]});state.selected.story=a.length-1;renderStory()}
 function deleteStoryScene(){archiveItem(dataMap.story,state.selected.story,'story scene',()=>{state.selected.story=0;renderStory()})}
-function renderStoryDetails(){const d=currentStory(); if(!d){$('rightPanel').innerHTML='';return}const locs=asArray(state.data[dataMap.realms]);$('rightPanel').innerHTML=`<div class="pad"><div class="toolbar"><h2 class="section-title">Scene Setup</h2><button class="small" onclick="openHelp('story')">?</button></div><div class="box"><h3>Where / Who / When</h3><label>Location / Background Scene</label><select id="detail_location" onchange="currentStory().location_id=this.value"><option value="">Any location / not attached yet</option>${locs.map(l=>`<option value="${esc(l.id||l.location_id||l.name)}" ${(d.location_id===(l.id||l.location_id||l.name))?'selected':''}>${esc(l.name||l.title||l.id||l.location_id)}</option>`).join('')}</select><div class="hint">This attaches the story scene to an actual Barcodia location/background. Create/edit locations and clickable areas in Locations / Hotspots.</div><label>Primary Character</label><select id="detail_char" onchange="currentStory().character_id=this.value"><option value="">Narrator / System</option>${(asArray(state.data[dataMap.characters])).map(c=>`<option value="${esc(c.id)}" ${d.character_id===c.id?'selected':''}>${esc(c.name||c.id)}</option>`).join('')}</select><label>Trigger</label><select id="detail_trigger" onchange="currentStory().trigger_type=this.value">${opts(['tap_npc','enter_location','inspect_object','use_item','quest_step','battle_complete','hotspot_click'],d.trigger_type||'tap_npc')}</select></div><div class="box"><div class="box-head"><h3>Show Only If</h3><button class="small" onclick="addCondition()">+ Rule</button></div><div id="conditions">${(d.conditions||[]).map((c,i)=>conditionRow(c,i)).join('')||'<p class="hint">No conditions. This scene can appear normally.</p>'}</div></div><div class="box"><div class="box-head"><h3>After Scene Completes</h3><button class="small" onclick="addEffect()">+ Effect</button></div><div id="effects">${(d.effects||[]).map((e,i)=>effectRow(e,i)).join('')||'<p class="hint">No completion effects yet.</p>'}</div></div><div class="box"><h3>Mini Story Flow</h3><div class="flow">${storyFlowHtml()}</div></div></div>`}
+function renderStoryDetails(){const d=currentStory(); if(!d){$('rightPanel').innerHTML='';return}const locs=asArray(state.data[dataMap.realms]);$('rightPanel').innerHTML=`<div class="pad"><div class="toolbar"><h2 class="section-title">Scene Setup</h2><button class="small" onclick="openHelp('story')">?</button></div><div class="box"><h3>Where / Who / When</h3><label>Location / Background Scene</label><select id="detail_location" onchange="currentStory().location_id=this.value"><option value="">Any location / not attached yet</option>${locs.map(l=>`<option value="${esc(l.id||l.location_id||l.name)}" ${(d.location_id===(l.id||l.location_id||l.name))?'selected':''}>${esc(l.name||l.title||l.id||l.location_id)}</option>`).join('')}</select><div class="hint">This attaches the story scene to an actual Barcadia location/background. Create/edit locations and clickable areas in Locations / Hotspots.</div><label>Primary Character</label><select id="detail_char" onchange="currentStory().character_id=this.value"><option value="">Narrator / System</option>${(asArray(state.data[dataMap.characters])).map(c=>`<option value="${esc(c.id)}" ${d.character_id===c.id?'selected':''}>${esc(c.name||c.id)}</option>`).join('')}</select><label>Trigger</label><select id="detail_trigger" onchange="currentStory().trigger_type=this.value">${opts(['tap_npc','enter_location','inspect_object','use_item','quest_step','battle_complete','hotspot_click'],d.trigger_type||'tap_npc')}</select></div><div class="box"><div class="box-head"><h3>Show Only If</h3><button class="small" onclick="addCondition()">+ Rule</button></div><div id="conditions">${(d.conditions||[]).map((c,i)=>conditionRow(c,i)).join('')||'<p class="hint">No conditions. This scene can appear normally.</p>'}</div></div><div class="box"><div class="box-head"><h3>After Scene Completes</h3><button class="small" onclick="addEffect()">+ Effect</button></div><div id="effects">${(d.effects||[]).map((e,i)=>effectRow(e,i)).join('')||'<p class="hint">No completion effects yet.</p>'}</div></div><div class="box"><h3>Mini Story Flow</h3><div class="flow">${storyFlowHtml()}</div></div></div>`}
 function conditionRow(c,i){return `<div class="box"><label>Flag / Story State</label><select class="condFlag">${flagOptions(c.flag)}</select><div class="rows"><div><label>Operator</label><select class="condOp">${opts(['equals','not_equals','greater_than','less_than','contains'],c.operator||'equals')}</select></div><div><label>Value</label><input class="condVal" value="${esc(String(c.value??true))}"></div></div><button class="small danger" onclick="removeCondition(${i})">Remove Rule</button></div>`}
 function effectRow(e,i){return `<div class="box"><label>Action</label><select class="effType">${opts(['set_flag','give_item','remove_item','unlock_location','start_quest','advance_quest','complete_quest','start_battle'],e.type||'set_flag')}</select><div class="rows"><div><label>Target</label><input class="effTarget" value="${esc(e.flag||e.quest||e.item_id||e.location_id||e.battle_id||'')}"></div><div><label>Value</label><input class="effValue" value="${esc(String(e.value??true))}"></div></div><button class="small danger" onclick="removeEffect(${i})">Remove Effect</button></div>`}
 function parseVal(v){if(v==='true')return true;if(v==='false')return false;if(!isNaN(Number(v))&&v.trim()!=='')return Number(v);return v}
@@ -326,7 +529,7 @@ function toggleStageFrame(){const cur=localStorage.getItem('barcodia_admin_stage
 function openPreviewModal(){const r=currentRealm();if(!r)return;$('previewBody').innerHTML=`<div class="full-preview-stage ${gameFrameClass()}"><p class="hint">This uses the same saved percentages as the game. Drag icons here or in the normal editor.</p><div class="hotspot-stage game-frame" onclick="stageAddHotspot(event)">${bgStageHtml(r)}</div><div class="drag-note">Drag icons to move. Click blank space to add a hotspot.</div></div>`;$('previewModal').classList.add('open')}
 function closePreviewModal(e){if(e&&e.target.id!=='previewModal')return;$('previewModal').classList.remove('open');renderRealms()}
 
-function renderRealms(){const key=dataMap.realms,items=asArray(state.data[key]).filter(x=>!x.archived);items.forEach(normalizeRealm);let i=Math.min(state.selected.realms||0,Math.max(0,items.length-1));state.selected.realms=i;const r=items[i];$('leftPanel').innerHTML=`<div class="pad"><div class="toolbar"><h2 class="section-title">Locations</h2><button class="small" onclick="openHelp('realms')">?</button></div><p class="hint">Use actual game backgrounds, then place clickable bed/computer/item/story hotspots on top.</p><button class="good" onclick="newRealm()">+ Location</button><button class="ghost small" onclick="seedDefaultLocations();renderRealms()">Add Game Backgrounds</button>${simpleList(items,x=>x.name||x.title||x.id,'realms')||'<div class="empty-soft">No locations yet.</div>'}</div>`;if(!r){$('mainPanel').innerHTML='<div class="empty"><h2>No locations yet</h2><p>Create a location/background first. Then add hotspots to it.</p><button class="good" onclick="newRealm()">+ Location</button></div>';$('rightPanel').innerHTML='';return}$('mainPanel').innerHTML=`<div class="pad"><div class="toolbar"><h2 class="section-title">Location / Hotspot Builder</h2><button class="small" onclick="openHelp('realms')">How this works</button><button class="small ghost" onclick="openPreviewModal()">Full Preview</button></div><div class="box"><h3>Use an actual game background</h3><p class="hint">The hotspot preview must use the actual game background. If the image is blank, the admin server is not serving the asset path yet. Use the local image upload below or correct the path.</p><label>Known Background Preset</label><select onchange="applyBackgroundPreset(this.value)">${backgroundOptions(r.id||r.location_id)}</select><label>Try common asset paths</label><div class="actions">${bgPathButtons(r)}</div></div><div class="rows"><div><label>Location Name</label><input id="r_name" value="${esc(r.name||'')}"></div><div><label>Location ID</label><input id="r_id" value="${esc(r.id||'')}"></div></div><label>Saved Game Background Image Path</label><input id="r_image" value="${esc(r.image||'')}" placeholder="assets/backgrounds/bedroom.png"><div class="box"><h3>Actual Background Preview Upload</h3><p class="hint">Upload the actual game background here if FastAPI cannot serve the image path yet. This is not a dummy preview; it stores the exact image locally in this browser for placement.</p><input type="file" accept="image/*" onchange="setLocalBgPreview(this)"><div class="actions"><button class="ghost small" onclick="clearLocalBgPreview()">Clear Local Preview</button></div><p class="hint">${esc(bgPreviewLabel(r))}</p></div><label>Description</label><textarea id="r_desc">${esc(r.description||'')}</textarea><div class="box"><div class="box-head"><h3>Visual Hotspot Placement</h3><button class="small good" onclick="addHotspot()">+ Hotspot</button></div><p class="hint">Click the visible background/preview to create a hotspot. Drag icons to move them. Default frame is phone-shaped to match the in-game touch layer; use Wide Frame only for desktop visual checking.</p><div class="actions"><button class="ghost small" onclick="toggleStageFrame()">Toggle Phone/Wide Preview Frame</button><button class="ghost small" onclick="openPreviewModal()">Open Full Preview Modal</button></div><div class="${gameFrameClass()}"><div class="hotspot-stage game-frame" onclick="stageAddHotspot(event)">${bgStageHtml(r)}</div><div class="drag-note">Tip: click a hotspot to select it, then drag the circle to move it. Use the list below when hotspots overlap.</div></div>${hotspotSelectListHtml(r)}</div><div class="actions"><button class="good" onclick="saveRealm(${i})">Save Location</button><button class="danger" onclick="deleteRealm(${i})">Archive Location</button><button onclick="saveKey('${key}')">Write File</button></div></div>`;renderHotspotDetails()}
+function renderRealms(){const key=dataMap.realms,items=asArray(state.data[key]).filter(x=>!x.archived);items.forEach(normalizeRealm);let i=Math.min(state.selected.realms||0,Math.max(0,items.length-1));state.selected.realms=i;const r=items[i];$('leftPanel').innerHTML=`<div class="pad"><div class="toolbar"><h2 class="section-title">Locations</h2><button class="small" onclick="openHelp('realms')">?</button></div><p class="hint">Use actual game backgrounds, then place clickable bed/computer/item/story hotspots on top.</p><button class="good" onclick="newRealm()">+ Location</button><button class="ghost small" onclick="seedDefaultLocations();renderRealms()">Add Game Backgrounds</button>${simpleList(items,x=>x.name||x.title||x.id,'realms')||'<div class="empty-soft">No locations yet.</div>'}</div>`;if(!r){$('mainPanel').className='panel story-main locations-main';$('mainPanel').innerHTML='<div class="empty"><h2>No locations yet</h2><p>Create a location/background first. Then add hotspots to it.</p><button class="good" onclick="newRealm()">+ Location</button></div>';$('rightPanel').innerHTML='';return}$('mainPanel').className='panel story-main locations-main';$('mainPanel').innerHTML=`<div class="pad"><div class="location-titlebar"><div><div class="location-kicker">‹ Locations › ${esc(r.name||r.id)}</div><div class="location-heading"><span class="chip gold">📍</span><h2>${esc(r.name||r.id)}</h2></div></div><div class="actions" style="margin-top:0"><button class="ghost" onclick="state.selected.realms=0;renderRealms()">← Back to Locations</button><button class="good" onclick="saveRealm(${i})">💾 Save Location</button></div></div><div class="location-tabs"><button class="ghost small">⌂ Overview</button><button class="active small">☗ Hotspots</button><button class="ghost small" onclick="document.getElementById('locationDetailsPanel')?.setAttribute('open','open')">▧ Background</button><button class="ghost small" onclick="document.getElementById('locationDetailsPanel')?.setAttribute('open','open')">ⓘ Details</button><button class="ghost small">⚑ Flags</button></div><div class="hotspot-workbench"><div class="hotspot-workbench-head"><div><h3>Hotspot Placement</h3><p class="hint">Click a hotspot to select it. Drag to move. Use the Full Preview button for larger placement checks.</p></div><div class="actions" style="margin-top:0"><button class="small ghost" onclick="openPreviewModal()">⛶ Full Preview</button><button class="small good" onclick="addHotspot()">+ Hotspot</button></div></div><div class="stage-wide"><div class="hotspot-stage game-frame" onclick="stageAddHotspot(event)">${bgStageHtml(r)}</div></div></div>${hotspotSelectListHtml(r)}<details id="locationDetailsPanel" class="location-edit-collapsible"><summary>Background & Location Details</summary><div class="inside"><div class="box"><h3>Actual Game Background</h3><p class="hint">The hotspot preview must use the actual game background. If the image is blank, the admin server is not serving the asset path yet. Use local upload only for placement backup.</p><label>Known Background Preset</label><select onchange="applyBackgroundPreset(this.value)">${backgroundOptions(r.id||r.location_id)}</select><label>Try common asset paths</label><div class="actions">${bgPathButtons(r)}</div></div><div class="rows"><div><label>Location Name</label><input id="r_name" value="${esc(r.name||'')}"></div><div><label>Location ID</label><input id="r_id" value="${esc(r.id||'')}"></div></div><label>Saved Game Background Image Path</label><input id="r_image" value="${esc(r.image||'')}" placeholder="asset:realms/bedroom_clean.png"><div class="box"><h3>Actual Background Preview Upload</h3><p class="hint">Upload the actual game background here only if FastAPI cannot serve the image path yet.</p><input type="file" accept="image/*" onchange="setLocalBgPreview(this)"><div class="actions"><button class="ghost small" onclick="clearLocalBgPreview()">Clear Local Preview</button></div><p class="hint">${esc(bgPreviewLabel(r))}</p></div><label>Description</label><textarea id="r_desc">${esc(r.description||'')}</textarea><div class="actions"><button class="good" onclick="saveRealm(${i})">Save Location</button><button class="danger" onclick="deleteRealm(${i})">Archive Location</button><button onclick="saveKey('${key}')">Write File</button></div></div></details></div>`;renderHotspotDetails()}
 function hotspotBox(h,i){const icon=h.icon||iconForAdminHotspot(h);return `<div class="hotspot-box ${(state.selected.hotspot||0)===i?'active':''}" onpointerdown="startHotspotDrag(event,${i})" onclick="event.stopPropagation();state.selected.hotspot=${i};renderHotspotDetails()" style="left:${h.x_pct}%;top:${h.y_pct}%;width:${h.width_pct||8}%;height:${h.height_pct||8}%"><span class="hotspot-pin" style="background:${esc(h.color||'rgba(14,165,233,.88)')}">${esc(icon)}</span><span class="hotspot-pin-label">${esc(h.label||h.id)}</span></div>`}
 function iconForAdminHotspot(h){const a=h.action_type||'inspect';if(a==='open_computer')return '💻';if(a==='rest')return '🛏️';if(a==='change_scene')return '➜';if(a==='give_item')return '✦';if(a==='start_battle')return '⚔️';if(a==='open_dialogue')return '💬';return '✧'}
 function hotspotSelectListHtml(r){const rows=(r.hotspots||[]).map((h,idx)=>({h,idx})).filter(o=>!o.h.archived);if(!rows.length)return '<div class="empty-soft">No hotspots yet. Click the background or press + Hotspot.</div>';return `<div class="hotspot-select-list"><h3 style="margin:4px 0 0">Hotspots on this location</h3>${rows.map(({h,idx})=>`<div class="hotspot-select-row ${(state.selected.hotspot||0)===idx?'active':''}"><button class="small ghost" onclick="state.selected.hotspot=${idx};renderRealms()">${esc(h.icon||iconForAdminHotspot(h))}</button><div><strong>${esc(h.label||h.id)}</strong><div class="hint tiny">${esc(actionLabel(h.action_type||'inspect'))} • x ${esc(h.x_pct)}%, y ${esc(h.y_pct)}%</div></div><button class="small danger" onclick="deleteHotspot(${idx})">Delete</button></div>`).join('')}</div>`}
