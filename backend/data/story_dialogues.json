@@ -1,0 +1,56 @@
+[
+  {
+    "id": "kitchen_mom_intro",
+    "title": "Kitchen — Mom Intro",
+    "location_id": "real_world/kitchen",
+    "character_id": "mom",
+    "trigger_type": "tap_npc",
+    "priority": 100,
+    "conditions": [
+      {
+        "flag": "mom_intro_complete",
+        "operator": "!=",
+        "value": true
+      }
+    ],
+    "lines": [
+      {
+        "speaker": "Mom",
+        "portrait": "asset:characters/mom_avatar.png",
+        "text": "Hey there. You're just in time — I was about to make something. How was your day?"
+      }
+    ],
+    "choices": [],
+    "effects": [
+      {
+        "type": "set_flag",
+        "flag": "mom_intro_complete",
+        "value": true
+      }
+    ]
+  },
+  {
+    "id": "kitchen_mom_after_forest_item",
+    "title": "Kitchen — Mom Reacts to Forest Item",
+    "location_id": "real_world/kitchen",
+    "character_id": "mom",
+    "trigger_type": "tap_npc",
+    "priority": 200,
+    "conditions": [
+      {
+        "flag": "forest_item_found",
+        "operator": "==",
+        "value": true
+      }
+    ],
+    "lines": [
+      {
+        "speaker": "Mom",
+        "portrait": "asset:characters/mom_avatar.png",
+        "text": "Wait... where did you get that? I've seen that symbol before."
+      }
+    ],
+    "choices": [],
+    "effects": []
+  }
+]

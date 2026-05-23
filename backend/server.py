@@ -2787,6 +2787,10 @@ ADMIN_DATA_FILES = {
     "game_config": ROOT_DIR / "data" / "config" / "game_config.json",
     "store_gold": ROOT_DIR / "data" / "store" / "gold_store.json",
     "realm_locations": ROOT_DIR / "data" / "realms" / "locations.json",
+    "story_dialogues": ROOT_DIR / "data" / "story" / "dialogues.json",
+    "story_characters": ROOT_DIR / "data" / "story" / "characters.json",
+    "story_flags": ROOT_DIR / "data" / "story" / "flags.json",
+    "story_quests": ROOT_DIR / "data" / "story" / "quests.json",
 }
 
 ADMIN_DATA_LABELS = {
@@ -2797,6 +2801,10 @@ ADMIN_DATA_LABELS = {
     "game_config": "Game Config",
     "store_gold": "Gold Store Items",
     "realm_locations": "Realm Locations",
+    "story_dialogues": "Story Dialogue Events",
+    "story_characters": "Story Characters",
+    "story_flags": "Story Flags",
+    "story_quests": "Story Quests",
 }
 
 
@@ -2818,7 +2826,16 @@ def read_admin_json_file(key: str) -> Any:
         raise HTTPException(404, "Unknown admin data file")
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
-        default = DEFAULT_REALM_DATA if key == "realm_locations" else ([] if key.startswith("enemies_") or key.startswith("store_") or key == "adventure_tiers" else {})
+        if key == "realm_locations":
+            default = DEFAULT_REALM_DATA
+        elif key in {"story_dialogues", "story_characters", "story_quests"}:
+            default = []
+        elif key == "story_flags":
+            default = {}
+        elif key.startswith("enemies_") or key.startswith("store_") or key == "adventure_tiers":
+            default = []
+        else:
+            default = {}
         path.write_text(json_dumps_pretty(default))
     import json
     try:

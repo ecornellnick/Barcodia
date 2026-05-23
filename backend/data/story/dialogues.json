@@ -1,58 +1,87 @@
 [
   {
-    "id": "kitchen_mom_intro",
-    "title": "Kitchen — Mom Intro",
-    "location_id": "real_world/kitchen",
-    "character_id": "mom",
+    "id": "story_scene_1779537396403",
+    "title": "New Story Scene",
+    "chapter": "Chapter 1 — The Beginning",
+    "scene_type": "Character Dialogue",
+    "enabled": true,
+    "location_id": "",
+    "character_id": "",
     "trigger_type": "tap_npc",
     "priority": 100,
-    "conditions": [
-      {
-        "flag": "mom_intro_complete",
-        "operator": "!=",
-        "value": true
-      }
-    ],
+    "conditions": [],
     "lines": [
       {
-        "speaker": "Mom",
-        "portrait": "asset:characters/mom_avatar.png",
-        "text": "Hey there! You're just in time — I was about to make something. How was your day?"
-      },
-      {
+        "type": "dialogue",
         "speaker": "Narrator",
         "portrait": "",
         "text": ""
       }
     ],
     "choices": [],
-    "effects": [
-      {
-        "type": "set_flag",
-        "flag": "mom_intro_complete",
-        "value": true
-      }
-    ]
+    "effects": []
   },
   {
-    "id": "kitchen_mom_after_forest_item",
-    "title": "Kitchen — Mom Reacts to Forest Item",
-    "location_id": "real_world/kitchen",
-    "character_id": "mom",
+    "id": "story_scene_1779537455444",
+    "title": "New Story Scene",
+    "chapter": "Chapter 1 — The Beginning",
+    "scene_type": "Character Dialogue",
+    "enabled": true,
+    "location_id": "",
+    "character_id": "",
     "trigger_type": "tap_npc",
-    "priority": 200,
-    "conditions": [
-      {
-        "flag": "forest_item_found",
-        "operator": "==",
-        "value": true
-      }
-    ],
+    "priority": 100,
+    "conditions": [],
     "lines": [
       {
-        "speaker": "Mom",
-        "portrait": "asset:characters/mom_avatar.png",
-        "text": "Wait... where did you get that? I've seen that symbol before."
+        "type": "dialogue",
+        "speaker": "Narrator",
+        "portrait": "",
+        "text": ""
+      }
+    ],
+    "choices": [],
+    "effects": []
+  },
+  {
+    "id": "story_scene_1779537455594",
+    "title": "New Story Scene",
+    "chapter": "Chapter 1 — The Beginning",
+    "scene_type": "Character Dialogue",
+    "enabled": true,
+    "location_id": "",
+    "character_id": "",
+    "trigger_type": "tap_npc",
+    "priority": 100,
+    "conditions": [],
+    "lines": [
+      {
+        "type": "dialogue",
+        "speaker": "Narrator",
+        "portrait": "",
+        "text": ""
+      }
+    ],
+    "choices": [],
+    "effects": []
+  },
+  {
+    "id": "story_scene_1779537455744",
+    "title": "New Story Scene",
+    "chapter": "Chapter 1 — The Beginning",
+    "scene_type": "Character Dialogue",
+    "enabled": true,
+    "location_id": "",
+    "character_id": "",
+    "trigger_type": "tap_npc",
+    "priority": 100,
+    "conditions": [],
+    "lines": [
+      {
+        "type": "dialogue",
+        "speaker": "Narrator",
+        "portrait": "",
+        "text": ""
       }
     ],
     "choices": [],
