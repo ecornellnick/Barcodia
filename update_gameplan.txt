@@ -1,0 +1,45 @@
+We probably only need 1 "master brain" file, instead of a "next". The file was mainly to keep your AI in remembereance of what we need to do etc.
+
+HUGE Master brain update plans, massive overhaul! I will chunk this out as best as i can. Also I have example screenshots I will send (not here and now) but for many of these, You'll have to remmeber to note if i say i have an example screenshot to show you for how we want our UX/UI to be!
+
+A) Heros
+Those hero avatars we have will eventually become characters in out upcoming "Story" mode! So, we need to:
+ * Give them All Names. Right now, you can just give them fantasy RPG placeholder names, because I dont have names yet. BUT... we do want to have a section in the ADmin portal where I can change all thier BIO details. I dont think your saving works yet still because I cant save the naems of the items, but we'll get to bugs later. 
+ *In the admin portal lets make a new section called "Characters". When you click on it, the right side will have tabs called "Allies", "Foes" or whatever, and the third tab is for everyoen else. Idk what to call that tab, But its like townspeople, villagers, etc. We need a super clean UI here and the admin portal UI might over overhauled later (probably def will), but for each characters I want to be able to change their name (name will be frozen after launch likely but for now its palceholder names), their bio story, probably will need a tag for "allegience" or something to say whcih faction they are a part of. Probably more later to add too.
+ * We will need to think of a place where the user can go to, to see all the characters that have been story unlocked. Im jumping ahead but I have an idea for the far-right tab which is now "Store" to later be something to pop up with tons of more options whcih maybe this can be in there. Kind of liek a "phone slide out" and the options are just like app icons on a phone. I'll explain more later but this is HUGE for how i wan tthis game to be. 
+
+ B) Story Mode.
+ * We need a placeholder for Story mode, which for now can say "Coming soon..." but i want to know where this option will be. 
+
+ C) Game general idea:
+ * So I think i want this game to be kinda like this - You as the player can go back and forth between the real-world and this fantasy world. Somehow (havent figured out yet) you got this phone, or something to your phone, or idk yet, that can transport yoyu to and from the real world to the fantasy word. I was first thinking maybe a magic mirror, but i think maybe phone makes more sense to transport you because of the main component of you can scan real world items. Sometimes in the story you have to go to the fantasy world and do tasks, fight battles, recover an item, etc, and sometimes you have to go back to the real world for tasks in the story. *IMPORTANT* We will need one of those commonly used "quest" tracker things where it says what you are supposed to do in your "main quest" so the user doesnt forget what they are supposed to do. There will also be side quests, and maybe later event quests (time limited). 
+ * In the real world, we need to figure out what about the gear you are wearing as of now, You'll look out of place wearing fantasy armor, so either we need:
+ 1) Each fantasy item maps also to a real-world type clothing and it automatically "changes" appearance to look like that
+ 2) You have to hit a "Swap gear" or something icon that makes you change your wardrobe. If you forget to do this, people in the real world will react negatively to you (and could cause problems too!) if you're dressed like a fantasy warrior. And same with the fantasy world if you wear real world clothes. This could be a fun thing for the user
+ 3) In the real world, you might need to go to the "tavern" or "shop" (I CAN SEND SCREENSHOT EXAMPLES OF HOW I WANT THIS) but basically we want to remove as many boring buttons and text boxes as we can in lieu of visualizations. This is where YOUR AI (not game ai) will have to help me generate graphics. So say you're ni the tavern, there will be a graphic of you in there and people you can tap/click to interact with. Shopkeepers, NPCs, INN keeper to refill health/mana at a cost. And if you're in the real world, instead of the tavern you might stop at a grocery store, or a hotel, or you're own house, etc. These will be graphics here i'll need your help with.
+
+ D) Bottom 5 icons we have:
+ * So the far right one we have now is called "STORE". I was thinking we'd call this "PHONE" instead. Then, when you tap/click this, we'll have a slide-up image of a phone like an iphone (obviously not a real iphone for copyright stuff) and that slide out will have app icon like things, THIS IS WHERE WE CAN ADD ALL OUR EXTRA THINGS TO DO! This way it doesnt clutter up the UI, looks like a real phone which is intended because our phone is our "portal gateway" between real world and fantasy world. We MAY want to put some or all of the HERO MENU stuff in here, idk yet. INside this phoen slide out liekly we'll want a place to travel to various places, depending on what world you are in. So in the real world you might travel to the (grocery) store for items, hotel to sleep (refresh health), or your home (also to refresh health, maybe check your computer, call someone etc. SLeeping in a hotel will cost money so maybe theres a benefit or "buff" we can get from a hotel, TBD though. 
+
+ E) Money. 
+ * Right now we have gold. This is the main currency in the fantasy world. We'll also need the currency for the real world, which We can just call dollars. We can use dollars and cents I suppose. This money CANNOT be used in the fantasy world because it's valueless to them. I suppose gold *could* be used in the real world but i dont know eyt because well have a ton of gold and that makes dollars/cent moot. Maybe a conversion rate but probably just keep them separate. Otherwise instead of GOLD in the fantasy world we could give it a fantasy name for currency whcih is also valueless in the real world. You'll earn dollars in the real world but much differently than the fantay world. We'll have to work that out. 
+
+ F) BAG icon is currently a box. It should be turned into a backpack icon. Inside the BAG menu, a few changes. Right now we have those buttons to filter. I think we can do better by making just one button called "filter" and when you click/tap that a quick popup shows you can filter by the type, and then the sort options. THere will be a button to cancel and the other button called "filter" or whatever makes the filter happen. There needs to be a way to clear the filter too, in the filter button.
+ * Also those item boxes inside the menu are too big and take up a lot of space. We need to make them smaller AND if you have more than 1 type of the exact same item, there should be one of those (things i forget their called) but a number at the top right or something to say how many of them that you have. Im not sure hot to do this with currently equipped items, as we DO NOT WANT currently equipped items to be lumped in. Do we leave currently equipped items out of this box meny or what do we do?
+ *We'll also want a graphic I think in the background here. We can make a note of this for later. 
+
+ G) BATTLE icon:
+ because of this dual world thing, this likely will need to change as you won't just go into battle in the real world otherwise... yeah that's illegal. So that battle icon could maybe only show up in the cell phone area ONLY WHEN you are in the fake world, but this needs some real collab with you and i to figure out whats best. This woudl also free up a "quick slot" item as i'll call it (bottom 5 icons) for another quick use. It also maybe be cool to make those bottom 5 quick slot options look like mobile app buttons too, to really show you are "using your phone" here.
+
+
+H)Story mode dilalogue:
+THIS IS IMPORTANT, when we have story dialogue, we'll want the fairly standard way of doing it with the background of the location, near the bottom the black text area where people speak, the user taps to continue, and we'll want the image of who ever is speaking to likely slide in/out from the left or right side to say who is talking. I can give screenshot examples here if you dont know what i mean. 
+
+
+---
+
+This is quite a HUGE update so we need to decide if I test this in parts, or if you send me the updates in different parts, and after they are all in, i to testing. I say this because if you send me parts and I test, we culd be in the rabbit-hole of I just need testing parts and we dont get to our full new update for my FULL review testing.
+
+
+
+

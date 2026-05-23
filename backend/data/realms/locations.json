@@ -1,0 +1,40 @@
+{
+  "realms": [
+    {
+      "id": "real",
+      "label": "Real World",
+      "short_label": "Real",
+      "accent": "#38BDF8",
+      "locations": [
+        {
+          "id": "bedroom",
+          "name": "Bedroom",
+          "subtitle": "",
+          "type": "home",
+          "image": "asset:realms/bedroom_clean.png",
+          "unlocked": true,
+          "current_default": true,
+          "hotspots": []
+        }
+      ]
+    },
+    {
+      "id": "fantasy",
+      "label": "Fantasy Realm",
+      "short_label": "Fantasy",
+      "accent": "#A855F7",
+      "locations": [
+        {
+          "id": "whisperwood_forest",
+          "name": "Whisperwood Forest",
+          "subtitle": "",
+          "type": "forest",
+          "image": "asset:realms/whisperwood_beacon_clean.png",
+          "unlocked": true,
+          "current_default": true,
+          "hotspots": []
+        }
+      ]
+    }
+  ]
+}

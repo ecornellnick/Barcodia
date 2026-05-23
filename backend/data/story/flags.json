@@ -1,0 +1,16 @@
+[
+  {
+    "id": "mom_intro_complete",
+    "label": "Mom intro complete",
+    "type": "boolean",
+    "default": false,
+    "notes": "Example flag used after Mom's first kitchen dialogue."
+  },
+  {
+    "id": "forest_item_found",
+    "label": "Forest item found",
+    "type": "boolean",
+    "default": false,
+    "notes": "Example future condition: Mom can react differently after a fantasy-world item is found."
+  }
+]

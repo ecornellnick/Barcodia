@@ -111,6 +111,11 @@ class AvatarIn(BaseModel):
     avatar: str
 
 
+class RealmTravelIn(BaseModel):
+    realm: str
+    location_id: str
+
+
 class TokenOut(BaseModel):
     token: str
     user: dict
@@ -164,6 +169,11 @@ class AdminConfigSaveIn(BaseModel):
 
 class StoreBuyIn(BaseModel):
     quantity: int = Field(default=1, ge=1, le=99)
+
+
+class RealmTraverseIn(BaseModel):
+    realm: str
+    location_id: str
 
 
 # ---------------- Helpers ----------------
@@ -1462,6 +1472,133 @@ async def me(user=Depends(get_current_user)):
     user[PREMIUM_CURRENCY_KEY] = int(user.get(PREMIUM_CURRENCY_KEY, 0) or 0)
     return user
 
+
+# ---------------- Realm / World Foundation ----------------
+
+DEFAULT_REALM_DATA = {
+    "realms": [
+        {
+            "id": "real",
+            "label": "Real World",
+            "short_label": "Real",
+            "accent": "#38BDF8",
+            "locations": [
+                {"id": "bedroom", "name": "Bedroom", "subtitle": "", "type": "home", "image": "asset:realms/bedroom_clean.png", "unlocked": True, "current_default": True, "hotspots": ["Desk", "Bed", "Window"]},
+                {"id": "grocery_store", "name": "Grocery Store", "subtitle": "", "type": "store", "image": "", "unlocked": False},
+                {"id": "hotel", "name": "Hotel", "subtitle": "", "type": "rest", "image": "", "unlocked": False},
+                {"id": "coffee_shop", "name": "Coffee Shop", "subtitle": "", "type": "social", "image": "", "unlocked": False},
+            ],
+        },
+        {
+            "id": "fantasy",
+            "label": "Fantasy Realm",
+            "short_label": "Fantasy",
+            "accent": "#A855F7",
+            "locations": [
+                {"id": "whisperwood_forest", "name": "Whisperwood Forest", "subtitle": "", "type": "forest", "image": "asset:realms/whisperwood_beacon_clean.png", "unlocked": True, "current_default": True, "hotspots": ["Resonance Beacon", "Forest Path", "Traveler Camp"]},
+                {"id": "town_square", "name": "Town Square", "subtitle": "", "type": "town", "image": "", "unlocked": True},
+                {"id": "rusty_tavern", "name": "The Rusty Tavern", "subtitle": "", "type": "tavern", "image": "", "unlocked": True},
+                {"id": "blacksmith", "name": "Blacksmith", "subtitle": "", "type": "shop", "image": "", "unlocked": True},
+                {"id": "adventure_gate", "name": "Adventure Gate", "subtitle": "", "type": "adventure", "image": "", "unlocked": True},
+            ],
+        },
+    ]
+}
+
+REALM_DATA_FILE = ROOT_DIR / "data" / "realms" / "locations.json"
+
+
+def read_realm_data() -> dict:
+    REALM_DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+    if not REALM_DATA_FILE.exists():
+        REALM_DATA_FILE.write_text(json_dumps_pretty(DEFAULT_REALM_DATA))
+    import json
+    try:
+        data = json.loads(REALM_DATA_FILE.read_text())
+    except Exception:
+        data = DEFAULT_REALM_DATA
+    if not isinstance(data, dict) or not isinstance(data.get("realms"), list):
+        data = DEFAULT_REALM_DATA
+    return data
+
+
+def find_realm(data: dict, realm_id: str) -> Optional[dict]:
+    return next((r for r in data.get("realms", []) if r.get("id") == realm_id), None)
+
+
+def default_location_for(realm: dict) -> dict:
+    locations = realm.get("locations", []) or []
+    return next((l for l in locations if l.get("current_default")), locations[0] if locations else {"id": "unknown", "name": "Unknown", "unlocked": True})
+
+
+def find_location(realm: dict, loc_id: str) -> Optional[dict]:
+    return next((l for l in realm.get("locations", []) if l.get("id") == loc_id), None)
+
+
+def build_realm_payload(user: dict) -> dict:
+    data = read_realm_data()
+    realms = data.get("realms", [])
+    current_realm_id = user.get("current_realm") or "real"
+    realm = find_realm(data, current_realm_id) or (realms[0] if realms else {"id": "real", "label": "Real World", "locations": []})
+    current_location_id = user.get("current_location_id") or default_location_for(realm).get("id")
+    location = find_location(realm, current_location_id) or default_location_for(realm)
+    return {
+        "current_realm": realm.get("id"),
+        "current_location_id": location.get("id"),
+        "realm": realm,
+        "location": location,
+        "realms": realms,
+    }
+
+
+@api.get("/realm")
+async def get_realm(user=Depends(get_current_user)):
+    payload = build_realm_payload(user)
+    # Persist safe defaults so the UI and future quests always have a source of truth.
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"current_realm": payload["current_realm"], "current_location_id": payload["current_location_id"]}},
+    )
+    return payload
+
+
+@api.post("/realm/traverse")
+async def traverse_realm(body: RealmTraverseIn, user=Depends(get_current_user)):
+    data = read_realm_data()
+    realm = find_realm(data, body.realm)
+    if not realm:
+        raise HTTPException(404, "Realm not found")
+    loc = find_location(realm, body.location_id)
+    if not loc:
+        raise HTTPException(404, "Location not found")
+    if loc.get("unlocked") is False:
+        raise HTTPException(400, "This location is locked")
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"current_realm": realm.get("id"), "current_location_id": loc.get("id")}},
+    )
+    user["current_realm"] = realm.get("id")
+    user["current_location_id"] = loc.get("id")
+    return build_realm_payload(user)
+
+
+@api.post("/realm/rest")
+async def realm_rest(user=Depends(get_current_user)):
+    # Testing foundation: resting in the real-world bedroom restores HP and Mana only.
+    # Future versions can add cooldowns, time passage, buffs, or story gates.
+    updates = {"hp": int(user.get("max_hp", user.get("hp", 1))), "mana": int(user.get("max_mana", user.get("mana", 1)))}
+    await db.users.update_one({"id": user["id"]}, {"$set": updates})
+    user.update(updates)
+    user.update(stamina_display_payload(user))
+    user.update(sigil_display_payload(user))
+    user["premium_currency_key"] = PREMIUM_CURRENCY_KEY
+    user["premium_currency_name"] = PREMIUM_CURRENCY_NAME
+    user[PREMIUM_CURRENCY_KEY] = int(user.get(PREMIUM_CURRENCY_KEY, 0) or 0)
+    user.pop("password", None)
+    user.pop("_id", None)
+    return user
+
+
 @api.get("/daily-goals")
 async def daily_goals(user=Depends(get_current_user)):
     user = await ensure_daily_on_user(user)
@@ -2649,6 +2786,7 @@ ADMIN_DATA_FILES = {
     "adventure_tiers": ROOT_DIR / "data" / "adventure" / "tiers.json",
     "game_config": ROOT_DIR / "data" / "config" / "game_config.json",
     "store_gold": ROOT_DIR / "data" / "store" / "gold_store.json",
+    "realm_locations": ROOT_DIR / "data" / "realms" / "locations.json",
 }
 
 ADMIN_DATA_LABELS = {
@@ -2658,6 +2796,7 @@ ADMIN_DATA_LABELS = {
     "adventure_tiers": "Adventure Tiers",
     "game_config": "Game Config",
     "store_gold": "Gold Store Items",
+    "realm_locations": "Realm Locations",
 }
 
 
@@ -2679,7 +2818,7 @@ def read_admin_json_file(key: str) -> Any:
         raise HTTPException(404, "Unknown admin data file")
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
-        default = [] if key.startswith("enemies_") or key.startswith("store_") or key == "adventure_tiers" else {}
+        default = DEFAULT_REALM_DATA if key == "realm_locations" else ([] if key.startswith("enemies_") or key.startswith("store_") or key == "adventure_tiers" else {})
         path.write_text(json_dumps_pretty(default))
     import json
     try:
@@ -2707,7 +2846,7 @@ def write_admin_json_file(key: str, data: Any) -> dict:
 ALLOWED_ADMIN_ASSET_BUCKETS = {
     "items/weapons", "items/armor", "items/consumables", "items/materials", "items/trinkets",
     "enemies/shared", "enemies/quick_hunt", "enemies/tier_1_forest",
-    "avatars", "maps",
+    "avatars", "maps", "realms",
 }
 ADMIN_ASSET_SIZE_HINTS = {
     "items/weapons": "512x512 PNG/WebP",
@@ -2720,6 +2859,7 @@ ADMIN_ASSET_SIZE_HINTS = {
     "enemies/tier_1_forest": "768x768 PNG/WebP",
     "avatars": "768x768 PNG/WebP",
     "maps": "1080x1920 PNG/WebP",
+    "realms": "1080x1920 PNG/WebP",
 }
 
 
@@ -2822,6 +2962,7 @@ async def admin_summary(_: bool = Depends(require_admin_secret)):
         "enemy_counts": enemy_counts,
         "adventure_tiers": len(tiers) if isinstance(tiers, list) else 0,
         "store_gold_items": len(store) if isinstance(store, list) else 0,
+        "realm_locations": sum(len(r.get("locations", [])) for r in (read_admin_json_file("realm_locations").get("realms", []) if isinstance(read_admin_json_file("realm_locations"), dict) else [])),
         "config": read_admin_json_file("game_config"),
     }
 

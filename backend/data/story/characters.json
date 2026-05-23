@@ -1,0 +1,16 @@
+[
+  {
+    "id": "mom",
+    "name": "Mom",
+    "portrait": "asset:characters/mom_avatar.png",
+    "role": "Family",
+    "notes": "Warm real-world anchor character."
+  },
+  {
+    "id": "narrator",
+    "name": "Narrator",
+    "portrait": "",
+    "role": "Narration",
+    "notes": "System narration voice."
+  }
+]
