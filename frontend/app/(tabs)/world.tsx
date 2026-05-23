@@ -41,15 +41,18 @@ function imageSource(image?: string): any {
 function PercentHotspot({ hotspot, onPress }: { hotspot: RealmHotspot; onPress: () => void }) {
   const left = `${Number(hotspot.x_pct ?? 20)}%` as any;
   const top = `${Number(hotspot.y_pct ?? 20)}%` as any;
-  const width = `${Number(hotspot.width_pct ?? 14)}%` as any;
-  const height = `${Number(hotspot.height_pct ?? 10)}%` as any;
+  const width = `${Number(hotspot.width_pct ?? 8)}%` as any;
+  const height = `${Number(hotspot.height_pct ?? 8)}%` as any;
+  const circleColor = hotspot.color || "rgba(14,165,233,0.90)";
   return (
     <TouchableOpacity
       activeOpacity={0.86}
       onPress={onPress}
       style={[styles.hotspot, { left, top, width, height }]}
     >
-      <Text style={styles.hotspotIcon}>{hotspot.icon || iconForHotspot(hotspot)}</Text>
+      <View style={[styles.hotspotCircle, { backgroundColor: circleColor }]}>
+        <Text style={styles.hotspotIcon}>{hotspot.icon || iconForHotspot(hotspot)}</Text>
+      </View>
       <Text style={styles.hotspotLabel}>{hotspot.label || hotspot.id || "Hotspot"}</Text>
     </TouchableOpacity>
   );
@@ -350,9 +353,10 @@ const styles = StyleSheet.create({
   realmName: { marginTop: 2, fontSize: 11, fontWeight: "900", letterSpacing: 1.2, textTransform: "uppercase" },
   warning: { marginTop: 10, borderRadius: 14, padding: 10, backgroundColor: "rgba(120,30,30,0.55)", borderWidth: 1, borderColor: "rgba(255,120,120,0.35)" },
   warningText: { color: "#FFD8D8", fontSize: 12, fontWeight: "800" },
-  hotspot: { position: "absolute", alignItems: "center", justifyContent: "center", borderRadius: 18, backgroundColor: "rgba(2,12,24,0.62)", borderWidth: 2, borderColor: "rgba(56,189,248,0.88)", shadowOpacity: 0, shadowRadius: 0, elevation: 0 },
-  hotspotIcon: { color: "#fff", fontSize: 23, fontWeight: "900" },
-  hotspotLabel: { marginTop: 3, color: "#E0F7FF", fontSize: 9, fontWeight: "900", letterSpacing: 0.4 },
+  hotspot: { position: "absolute", alignItems: "center", justifyContent: "center" },
+  hotspotCircle: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: "rgba(255,255,255,0.92)", shadowColor: "#000", shadowOpacity: 0.45, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 8 },
+  hotspotIcon: { color: "#fff", fontSize: 22, fontWeight: "900" },
+  hotspotLabel: { marginTop: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, overflow: "hidden", backgroundColor: "rgba(2,6,23,0.72)", color: "#E0F7FF", fontSize: 9, fontWeight: "900", letterSpacing: 0.4 },
   transitionOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 30 },
   transitionPanel: { flex: 1, alignItems: "center", justifyContent: "center", gap: 18 },
   transitionRing: { width: 122, height: 122, borderRadius: 61, borderWidth: 2, borderColor: "rgba(56,189,248,0.55)", alignItems: "center", justifyContent: "center", shadowColor: "#22D3EE", shadowOpacity: 0.7, shadowRadius: 24 },

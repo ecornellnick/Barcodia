@@ -19,11 +19,18 @@
               "id": "computer",
               "label": "Computer",
               "icon": "▭",
-              "x_pct": 18,
-              "y_pct": 31,
+              "x_pct": 10.5,
+              "y_pct": 46.3,
               "width_pct": 12,
               "height_pct": 10,
-              "action_type": "open_computer"
+              "action_type": "open_computer",
+              "color": "rgba(14,165,233,.88)",
+              "linked_dialogue": "",
+              "story_scene_id": "",
+              "linked_location": "",
+              "item_id": "",
+              "target_id": "",
+              "condition_flag": ""
             },
             {
               "id": "window",
@@ -50,21 +57,12 @@
               "id": "kitchen_door",
               "label": "Kitchen",
               "icon": "⌂",
-              "x_pct": 82,
-              "y_pct": 62,
+              "x_pct": 89.5,
+              "y_pct": 92.8,
               "width_pct": 14,
               "height_pct": 12,
               "action_type": "change_scene",
               "linked_location": "kitchen"
-            },
-            {
-              "id": "hotspot_1779543673840",
-              "label": "New Hotspot",
-              "x_pct": 16.8,
-              "y_pct": 26.1,
-              "width_pct": 14,
-              "height_pct": 10,
-              "action_type": "inspect"
             }
           ],
           "location_id": "bedroom",
