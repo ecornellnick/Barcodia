@@ -150,7 +150,7 @@ function ComputerScreen({ onBack }: { onBack: () => void }) {
 
 function RestScreen({ onBack }: { onBack: () => void }) {
   return (
-    <ImageBackground source={REALM_IMAGE_SOURCES["asset:realms/bedroom.png"]} style={styles.bg} resizeMode="stretch">
+    <ImageBackground source={REALM_IMAGE_SOURCES["asset:realms/bedroom.png"]} style={styles.bg} resizeMode="cover">
       <LinearGradient colors={["rgba(0,0,0,0.28)", "rgba(0,0,0,0.46)"]} style={styles.overlayCenter}>
         <View style={styles.resultPanel}>
           <View style={styles.resultIcon}><Text style={styles.resultIconText}>♥</Text></View>
@@ -244,7 +244,7 @@ export default function WorldScreen() {
 
   if (mode === "window") {
     return (
-      <ImageBackground source={REALM_IMAGE_SOURCES["asset:realms/bedroom_window_day.png"]} style={styles.bg} resizeMode="stretch">
+      <ImageBackground source={REALM_IMAGE_SOURCES["asset:realms/bedroom_window_day.png"]} style={styles.bg} resizeMode="cover">
         <LinearGradient colors={["rgba(0,0,0,0.04)", "rgba(0,0,0,0.28)"]} style={styles.overlay}>
           <TouchableOpacity onPress={returnToScene} style={styles.miniBack}><Text style={styles.miniBackText}>← Back</Text></TouchableOpacity>
           {!dialogueDismissed ? <DialogueBox lines={windowLines} index={dialogueIndex} onNext={() => advanceDialogue(windowLines)} speaker="Narration" /> : null}
@@ -255,7 +255,7 @@ export default function WorldScreen() {
 
   if (mode === "kitchen") {
     return (
-      <ImageBackground source={REALM_IMAGE_SOURCES["asset:realms/kitchen_day.png"]} style={styles.bg} resizeMode="stretch">
+      <ImageBackground source={REALM_IMAGE_SOURCES["asset:realms/kitchen_day.png"]} style={styles.bg} resizeMode="cover">
         <LinearGradient colors={["rgba(0,0,0,0.08)", "rgba(0,0,0,0.42)"]} style={styles.overlay}>
           <TouchableOpacity onPress={returnToScene} style={styles.miniBack}><Text style={styles.miniBackText}>← Back</Text></TouchableOpacity>
           {!dialogueDismissed ? <DialogueBox lines={kitchenLines} index={dialogueIndex} onNext={() => advanceDialogue(kitchenLines)} /> : null}
@@ -269,7 +269,7 @@ export default function WorldScreen() {
   }
 
   return (
-    <ImageBackground source={image} style={styles.bg} resizeMode={isReal ? "stretch" : "cover"}>
+    <ImageBackground source={image} style={styles.bg} resizeMode="cover">
       <Animated.View style={[styles.sceneLayer, { opacity: fade }]}> 
         <LinearGradient colors={["rgba(0,0,0,0.08)", "rgba(0,0,0,0.08)", "rgba(0,0,0,0.42)"]} style={styles.overlay}>
           <View style={styles.content}>
@@ -280,10 +280,10 @@ export default function WorldScreen() {
 
             {isBedroom ? (
               <>
-                <Hotspot label="Computer" icon="▭" left="20%" top="39%" onPress={() => openMode("computer", "Opening Computer...")} />
-                <Hotspot label="Window" icon="□" left="52%" top="25%" onPress={() => openMode("window", "Looking Outside...")} />
-                <Hotspot label="Bed" icon="▰" left="72%" top="56%" onPress={rest} />
-                <Hotspot label="Kitchen" icon="⌂" left="82%" top="70%" onPress={() => openMode("kitchen", "Walking to Kitchen...")} />
+                <Hotspot label="Computer" icon="▭" left="18%" top="31%" onPress={() => openMode("computer", "Opening Computer...")} />
+                <Hotspot label="Window" icon="□" left="51%" top="22%" onPress={() => openMode("window", "Looking Outside...")} />
+                <Hotspot label="Bed" icon="▰" left="70%" top="52%" onPress={rest} />
+                <Hotspot label="Kitchen" icon="⌂" left="82%" top="62%" onPress={() => openMode("kitchen", "Walking to Kitchen...")} />
               </>
             ) : null}
 
