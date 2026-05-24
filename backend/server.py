@@ -49,9 +49,17 @@ ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
 
 # Frontend image assets are served by the backend in local/dev so admin-uploaded
 # assets can be previewed and used by the mobile app without rebundling.
-FRONTEND_DIR = ROOT_DIR.parent / "frontend"
+PROJECT_DIR = ROOT_DIR.parent
+FRONTEND_DIR = PROJECT_DIR / "frontend"
 FRONTEND_IMAGES_DIR = FRONTEND_DIR / "assets" / "images"
 FRONTEND_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+
+# Cinematics live at the repo root in /Cinematics for now. These files are
+# authoring/runtime media assets, not personal reference-only concept files.
+# The Dev Mode cinematic viewer uses this static mount to test playback without
+# bundling large MP4s into the Expo app.
+CINEMATICS_DIR = PROJECT_DIR / "Cinematics"
+CINEMATICS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 client = AsyncIOMotorClient(MONGO_URL)
@@ -59,6 +67,7 @@ db = client[DB_NAME]
 
 app = FastAPI(title="Barcodia API")
 app.mount("/assets", StaticFiles(directory=str(FRONTEND_IMAGES_DIR)), name="assets")
+app.mount("/cinematics", StaticFiles(directory=str(CINEMATICS_DIR)), name="cinematics")
 ADMIN_STATIC_DIR = ROOT_DIR / "admin" / "assets"
 ADMIN_STATIC_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/admin/assets", StaticFiles(directory=str(ADMIN_STATIC_DIR)), name="admin_assets")

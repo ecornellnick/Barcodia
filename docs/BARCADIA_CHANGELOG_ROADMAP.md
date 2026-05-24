@@ -479,6 +479,41 @@ git push
 
 ---
 
+
+
+## Update v54 — Battle Combat Foundation
+
+Changed files:
+- `frontend/app/dev/battle-lab.tsx`
+- `frontend/src/battle/combat.ts`
+- `frontend/src/battle/types.ts`
+- `frontend/src/battle/index.ts`
+- `docs/BATTLE_SYSTEM_PLAN.md`
+- `docs/BARCADIA_CHANGELOG_ROADMAP.md`
+
+What changed:
+- Added basic attack targeting inside the isolated Battle Lab.
+- Added HP/damage/defeat state.
+- Added terrain-aware damage modifiers.
+- Added simple counterattack behavior.
+- Added unit HP bars and combat log messages.
+- Added victory/defeat detection hooks for the next turn-system chunk.
+
+What to test later after battle chunks are complete:
+- Select Hero.
+- Move into range.
+- Tap a thug in a red attack tile.
+- Confirm damage applies and HP bars update.
+- Confirm defeated enemies show defeated state.
+
+Known limitations:
+- No enemy phase yet.
+- No battle result screen yet.
+- No final sprites/animations yet.
+
+Next roadmap step:
+- v55 turn system, simple thug AI, and win/loss flow.
+
 # Current High-Level Status
 
 The project is now entering this stage:
@@ -708,3 +743,215 @@ Before implementation, design the first battle prototype data model with:
 - basic skills
 - cooldown runtime state
 - action execution flow
+
+---
+
+## Update v51 — Dev Battle Lab Foundation
+
+### Changed Files
+- `frontend/app/(tabs)/world.tsx`
+- `frontend/app/dev/battle-lab.tsx`
+- `frontend/assets/images/battle/first_battle_map.png`
+- `docs/BARCADIA_CHANGELOG_ROADMAP.md`
+- `docs/BATTLE_SYSTEM_PLAN.md`
+
+### Added
+- Dev Mode button to open an isolated Battle Test Lab.
+- New `frontend/app/dev/battle-lab.tsx` route for tactical battle prototyping.
+- Approved bright city first-battle map reference added as a frontend battle asset.
+- Initial Battle 001 setup:
+  - Hero in plain clothes
+  - 3 thug enemies
+  - hidden/non-combatant pickpocket child
+  - square grid overlay
+  - terrain info panel
+  - unit info panel
+  - movement/attack preview overlays
+
+### Notes
+- This is intentionally isolated from the main game runtime.
+- No story or hotspot flow should depend on this route yet.
+- The goal is to safely prototype the Langrisser-style tactical battle system without destabilizing exploration/story systems.
+
+### Known Limitations
+- Units do not move yet.
+- Attacks do not apply damage yet.
+- Turn order and AI are not implemented yet.
+- Sprites are placeholder tokens over the approved battle-map reference.
+
+### Next Planned Update
+- v52: terrain-aware movement system.
+
+---
+
+## Update v52 — Battle Terrain + Map Data Foundation
+
+### Changed Files
+- `frontend/app/dev/battle-lab.tsx`
+- `frontend/src/battle/types.ts`
+- `frontend/src/battle/terrain.ts`
+- `frontend/src/battle/maps/cityStreetAmbush.ts`
+- `frontend/src/battle/index.ts`
+- `docs/BATTLE_SYSTEM_PLAN.md`
+- `docs/BARCADIA_CHANGELOG_ROADMAP.md`
+
+### What Changed
+- Began moving battle logic out of the dev lab and into permanent reusable battle modules.
+- Added the first reusable tactical battle data model.
+- Added terrain definitions and terrain-aware movement preview calculation.
+- Added the first battle scenario data for Battle 001 — City Street Ambush.
+- Updated Battle Lab to use reusable `frontend/src/battle/` modules.
+
+### Architectural Guardrail
+Battle Lab is a temporary/dev-only testing shell. The reusable battle engine lives under `frontend/src/battle/`. Before launch, remove or hide dev-only routes and verify there is no ghost/relic code, no duplicate battle logic, no stub text, and no dead buttons.
+
+### What To Test Later
+- Battle Lab still opens from Dev Mode.
+- City Street Ambush still renders.
+- Selecting units updates movement/attack preview.
+- Blue movement preview reflects movement costs rather than raw distance only.
+- Terrain legend and selected terrain panel show correct values.
+
+### Known Limitations
+- Units do not actually move yet.
+- No attacks/damage yet.
+- No turn system yet.
+- No enemy AI yet.
+
+### Next Planned Update
+v53 — Tactical unit movement.
+
+---
+
+## Update v53 — Tactical Unit Movement
+
+### Changed Files
+- `frontend/app/dev/battle-lab.tsx`
+- `frontend/src/battle/types.ts`
+- `frontend/src/battle/movement.ts`
+- `frontend/src/battle/index.ts`
+- `docs/BATTLE_SYSTEM_PLAN.md`
+- `docs/BARCADIA_CHANGELOG_ROADMAP.md`
+
+### What Changed
+- Added real unit movement to the isolated Battle Lab.
+- Movement is now terrain-aware and uses the reusable battle engine helpers.
+- The selected ally can move by tapping legal blue tiles.
+- Illegal movement is blocked with battle-log feedback.
+- Occupied tiles and blocked terrain cannot be entered.
+- Added reset/refresh testing controls for movement iteration.
+
+### Architectural Guardrail
+Battle Lab remains dev-only. Reusable battle logic belongs in `frontend/src/battle/`. Before launch, dev-only routes must be removed or hidden, and there should be no ghost code, no duplicate battle systems, no visible stubs, and no dead buttons.
+
+### What To Test Later
+- Open Battle Lab from Dev Mode.
+- Select Hero.
+- Tap a blue tile and confirm Hero moves.
+- Try tapping blocked/occupied/non-blue tiles and confirm movement is rejected.
+- Confirm Refresh Movement allows movement again.
+- Confirm Reset Battle Lab restores starting positions.
+
+### Known Limitations
+- No attacks/damage yet.
+- No turn phase system yet.
+- No enemy AI yet.
+- No polished movement animation/path line yet.
+
+### Next Planned Update
+v54 — Basic combat, attack execution, HP/damage, terrain defense modifiers, and defeat state.
+
+---
+
+## Update v55 — Dev Cinematic Viewer Intermittent Update
+Date: 2026-05-24
+
+### Changed Files
+- `backend/server.py`
+- `frontend/app/(tabs)/world.tsx`
+- `docs/BARCADIA_CHANGELOG_ROADMAP.md`
+- `docs/BATTLE_SYSTEM_PLAN.md`
+
+### Added
+- Dev Mode now includes a **Cinematic Test Viewer** button.
+- Backend now serves repo-root cinematic files from:
+
+```text
+Cinematics/
+```
+
+through:
+
+```text
+/cinematics/<filename>
+```
+
+- The opening cinematic test expects this file to exist locally:
+
+```text
+Cinematics/Opening Cinematic Latest.mp4
+```
+
+### Purpose
+This lets us test how cinematic MP4 playback feels inside the game without hard-wiring cinematics into the story runtime yet.
+
+### Architecture Note
+The Dev Mode cinematic viewer is a testing entry point only. The reusable direction is:
+
+```text
+Story Scene / Event
+  -> Cinematic Player
+  -> Continue Story
+```
+
+Before launch, dev-only cinematic buttons must either be hidden from production or removed as part of the no-ghost-code cleanup.
+
+### Known Limitations
+- The MP4 is not bundled in this zip because it already lives locally in the repo-root `Cinematics/` folder.
+- If playback fails, verify the file path and restart the backend so the static route can serve it.
+
+### What To Test
+1. Start the backend.
+2. Confirm this file exists: `Cinematics/Opening Cinematic Latest.mp4`.
+3. Open the game.
+4. Open Dev Mode.
+5. Tap **Open Cinematic**.
+6. Confirm the video plays and can be closed cleanly.
+
+### Next Planned Update
+Return to the tactical battle system roadmap:
+- v55/v56 battle turn system + enemy thug AI + victory/defeat flow.
+
+---
+
+## Update v56 — Cinematic Fullscreen Orientation Options
+Date: 2026-05-24
+
+### Changed Files
+- `frontend/app/(tabs)/world.tsx`
+- `docs/BARCADIA_CHANGELOG_ROADMAP.md`
+- `docs/BATTLE_SYSTEM_PLAN.md`
+
+### Added
+- Dev Mode now offers two cinematic preview modes:
+  - **Portrait Fullscreen**
+  - **Landscape Fullscreen**
+- Cinematic playback now opens as an edge-to-edge fullscreen test viewer without the previous decorative frame/border.
+- Landscape mode simulates a full landscape presentation so we can compare portrait-first versus landscape-first cinematic direction.
+
+### Purpose
+This lets us evaluate what the player sees for MP4 cinematics before committing to the final game orientation strategy.
+
+### No Ghost Code Rule
+This remains a dev-only testing entry point. The reusable production concept is still a Cinematic Player callable from story events. Before launch, dev-only cinematic buttons must be removed or hidden.
+
+### What To Test
+1. Confirm backend is running.
+2. Confirm `Cinematics/Opening Cinematic Latest.mp4` exists.
+3. Open Dev Mode.
+4. Tap **Portrait Fullscreen** and verify edge-to-edge playback.
+5. Close it cleanly.
+6. Tap **Landscape Fullscreen** and verify the landscape presentation fills the screen without the old UI frame.
+
+### Next Planned Update
+Return to battle chunks: turn system, enemy thug AI, and victory/defeat flow.

@@ -13,8 +13,9 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { WebView } from "react-native-webview";
 import {
   api,
   RealmHotspot,
@@ -27,6 +28,11 @@ import { COLORS } from "@/src/lib/theme";
 
 const BACKEND_BASE =
   process.env.EXPO_PUBLIC_BACKEND_URL?.replace(/\/api$/, "") || "";
+
+const OPENING_CINEMATIC_FILE = "Opening Cinematic Latest.mp4";
+const OPENING_CINEMATIC_URL = `${BACKEND_BASE}/cinematics/${encodeURIComponent(
+  OPENING_CINEMATIC_FILE,
+)}`;
 
 const REALM_IMAGE_SOURCES: Record<string, any> = {
   "asset:realms/bedroom.png": require("../../assets/images/realms/bedroom_clean.png"),
@@ -525,6 +531,69 @@ type RuntimeQuestEntry = { id: string; status: string; label?: string };
 type RuntimeActionEntry = { id: string; label: string; detail?: string };
 type RuntimeQaIssue = { level: "ok" | "warn" | "bad"; label: string; detail?: string };
 
+
+type CinematicOrientation = "portrait" | "landscape";
+
+function CinematicViewerModal({
+  visible,
+  orientation,
+  onClose,
+}: {
+  visible: boolean;
+  orientation: CinematicOrientation;
+  onClose: () => void;
+}) {
+  const videoUrl = OPENING_CINEMATIC_URL;
+  const isLandscape = orientation === "landscape";
+  const html = `<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
+  <style>
+    html,body{margin:0;width:100%;height:100%;background:#000;color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;}
+    .stage{position:fixed;inset:0;background:#000;overflow:hidden;}
+    .portrait{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#000;}
+    .portrait video{width:100vw;height:100vh;object-fit:contain;background:#000;}
+    .landscape{position:absolute;left:50%;top:50%;width:100vh;height:100vw;transform:translate(-50%,-50%) rotate(90deg);display:flex;align-items:center;justify-content:center;background:#000;}
+    .landscape video{width:100%;height:100%;object-fit:contain;background:#000;}
+    .label{position:fixed;left:12px;bottom:10px;color:rgba(255,255,255,.65);font-size:11px;font-weight:700;letter-spacing:.03em;background:rgba(0,0,0,.45);padding:5px 8px;border-radius:999px;}
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="${isLandscape ? "landscape" : "portrait"}">
+      <video controls playsinline autoplay src="${videoUrl}"></video>
+    </div>
+    <div class="label">${isLandscape ? "Landscape fullscreen test" : "Portrait fullscreen test"}</div>
+  </div>
+</body>
+</html>`;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={false}
+      animationType="fade"
+      presentationStyle="fullScreen"
+      onRequestClose={onClose}
+    >
+      <View style={styles.cinematicFullscreen}>
+        <WebView
+          originWhitelist={["*"]}
+          source={{ html, baseUrl: BACKEND_BASE || undefined }}
+          allowsFullscreenVideo
+          mediaPlaybackRequiresUserAction={false}
+          javaScriptEnabled
+          style={styles.cinematicFullscreenWebView}
+        />
+        <TouchableOpacity onPress={onClose} style={styles.cinematicCloseButton}>
+          <Text style={styles.cinematicCloseButtonText}>Close</Text>
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  );
+}
+
 function DevModePanel({
   visible,
   onClose,
@@ -547,6 +616,9 @@ function DevModePanel({
   onToggleFlag,
   qaIssues,
   onRunRuntimeQA,
+  onOpenBattleLab,
+  onOpenCinematicPortrait,
+  onOpenCinematicLandscape,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -569,6 +641,9 @@ function DevModePanel({
   onToggleFlag: (flagId: string) => void;
   qaIssues: RuntimeQaIssue[];
   onRunRuntimeQA: () => void;
+  onOpenBattleLab: () => void;
+  onOpenCinematicPortrait: () => void;
+  onOpenCinematicLandscape: () => void;
 }) {
   const [locationFilter, setLocationFilter] = useState("");
   const [storyFilter, setStoryFilter] = useState("");
@@ -649,6 +724,39 @@ function DevModePanel({
                 <Text style={styles.devStatusValue}>
                   {currentSceneId || "None"}
                 </Text>
+              </View>
+            </View>
+
+            <View style={styles.devSection}>
+              <View style={styles.devBattleHeaderRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.devSectionTitle}>Battle Test Lab</Text>
+                  <Text style={styles.devHint}>
+                    Isolated tactical sandbox for the Langrisser-style battle prototype. This does not touch story progression yet.
+                  </Text>
+                </View>
+                <TouchableOpacity style={styles.devPrimaryButton} onPress={onOpenBattleLab}>
+                  <Text style={styles.devPrimaryButtonText}>Open Battle Lab</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.devSection}>
+              <View style={styles.devBattleHeaderRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.devSectionTitle}>Cinematic Test Viewer</Text>
+                  <Text style={styles.devHint}>
+                    Plays the opening cinematic from the repo-root Cinematics folder through the backend. This is dev-only and does not alter story state.
+                  </Text>
+                </View>
+                <View style={styles.devButtonColumn}>
+                  <TouchableOpacity style={styles.devPrimaryButton} onPress={onOpenCinematicPortrait}>
+                    <Text style={styles.devPrimaryButtonText}>Portrait Fullscreen</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.devSecondaryButton} onPress={onOpenCinematicLandscape}>
+                    <Text style={styles.devSecondaryButtonText}>Landscape Fullscreen</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
 
@@ -913,6 +1021,7 @@ export default function WorldScreen() {
   const [dialogueDismissed, setDialogueDismissed] = useState(false);
   const [activeDialogue, setActiveDialogue] = useState<ActiveDialogue>(null);
   const [devOpen, setDevOpen] = useState(false);
+  const [cinematicMode, setCinematicMode] = useState<CinematicOrientation | null>(null);
   const [devSnapshots, setDevSnapshots] = useState<DevSnapshot[]>([]);
   const [runtimeFlags, setRuntimeFlags] = useState<Record<string, boolean | string | number>>({});
   const [runtimeInventory, setRuntimeInventory] = useState<RuntimeInventoryItem[]>([]);
@@ -1596,6 +1705,16 @@ export default function WorldScreen() {
           }
           qaIssues={runtimeQaIssues}
           onRunRuntimeQA={runRuntimeQaCheck}
+          onOpenBattleLab={() => router.push("/dev/battle-lab")}
+          onOpenCinematicPortrait={() => setCinematicMode("portrait")}
+          onOpenCinematicLandscape={() => setCinematicMode("landscape")}
+        />
+      ) : null}
+      {__DEV__ ? (
+        <CinematicViewerModal
+          visible={cinematicMode !== null}
+          orientation={cinematicMode || "portrait"}
+          onClose={() => setCinematicMode(null)}
         />
       ) : null}
       {actionToast ? (
@@ -1757,6 +1876,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "900",
     marginTop: 4,
+  },
+  devBattleHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  devPrimaryButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: "rgba(124,58,237,0.34)",
+    borderWidth: 1,
+    borderColor: "rgba(216,180,254,0.55)",
+  },
+  devPrimaryButtonText: {
+    color: "#FAF5FF",
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 0.3,
   },
   devSection: {
     borderRadius: 16,
@@ -2326,4 +2464,74 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 1.1,
   },
+  cinematicFullscreen: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+  cinematicFullscreenWebView: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+  cinematicCloseButton: {
+    position: "absolute",
+    top: 48,
+    right: 16,
+    minWidth: 82,
+    height: 40,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.62)",
+    borderWidth: 1,
+    borderColor: "rgba(251,191,36,0.58)",
+  },
+  cinematicCloseButtonText: {
+    color: "#FDE68A",
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 0.7,
+  },
+  cinematicBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.88)",
+    padding: 14,
+    justifyContent: "center",
+  },
+  cinematicPanel: {
+    flex: 1,
+    borderRadius: 24,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(251,191,36,0.62)",
+    backgroundColor: "#05070D",
+  },
+  cinematicHeader: {
+    minHeight: 78,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(251,191,36,0.24)",
+    backgroundColor: "rgba(17,24,39,0.96)",
+  },
+  cinematicTitle: {
+    color: "#FDE68A",
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: 0.3,
+  },
+  cinematicWebView: {
+    flex: 1,
+    backgroundColor: "#030712",
+  },
+  cinematicFooter: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(251,191,36,0.16)",
+    backgroundColor: "rgba(3,7,18,0.96)",
+  },
+
 });

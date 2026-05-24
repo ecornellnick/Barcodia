@@ -43,28 +43,38 @@ Strong visual rule:
 - blue move overlay
 - red attack overlay preview
 
-### v52 — Movement System
+### v52 — Terrain + Map Data Foundation
+- reusable battle engine folder
+- terrain definitions
+- City Street Ambush scenario data
+- terrain-aware movement preview
+
+### v53 — Unit Movement
 - select unit
 - terrain-aware move range
 - pathing
-- move unit
-- acted state
+- tap legal blue tile to move
+- blocked/occupied tile prevention
+- moved-state tracking
 
-### v53 — Combat System
+### v54 — Combat / HP / Damage / Defeat State
 - basic attacks
-- HP/damage
+- attack range targeting
+- HP bars
 - terrain defense modifiers
 - melee/ranged rules
-- counterattack stub
+- simple counterattack
+- defeated unit state
+- victory/defeat condition detection
 
-### v54 — Turns + AI
+### v55 — Turns + Enemy AI
 - player phase
 - enemy phase
 - each unit acts once
 - simple thug AI
-- win/loss conditions
+- win/loss screen
 
-### v55 — Langrisser Feel Layer
+### v56 — Langrisser Feel Layer
 - unit info panel
 - combat preview
 - terrain tooltip
@@ -73,7 +83,7 @@ Strong visual rule:
 - attack effects
 - placeholder sprites
 
-### v56 — Story Integration
+### v57 — Story Integration
 - story choice or hotspot starts battle
 - battle victory triggers story scene/effects
 - battle defeat triggers alternate story scene/effects
@@ -206,3 +216,205 @@ Temporary sandbox route:
 ```text
 frontend/app/dev/battle-lab.tsx
 ```
+
+---
+
+# Update v51 — Dev Battle Lab Foundation
+
+## Purpose
+Add an isolated, dev-only testing surface for the tactical battle system before connecting battles to the live story/runtime flow.
+
+## Why this exists
+The battle system should be tested independently so early tactical-grid work does not break existing Barcadia exploration, hotspots, story triggers, or Dev Mode tools.
+
+## Added files / planned replacement files
+- `frontend/app/dev/battle-lab.tsx`
+- `frontend/assets/images/battle/first_battle_map.png`
+- `frontend/app/(tabs)/world.tsx`
+- `docs/BATTLE_SYSTEM_PLAN.md`
+- `docs/BARCADIA_CHANGELOG_ROADMAP.md`
+
+## Battle Lab v1 behavior
+- Opens from the in-game Dev Mode panel.
+- Uses the approved bright city first-battle reference map.
+- Shows a square grid overlay.
+- Places first-battle story units:
+  - Hero in plain clothes
+  - 3 thug enemies
+  - hidden pickpocket child as non-combatant
+- Shows terrain data and unit stats.
+- Shows prototype movement and attack overlays.
+
+## Strong constraint
+This is dev-only and isolated. No story progression, hotspot runtime, or main game flow should depend on this screen yet.
+
+## Next battle chunks
+1. Terrain-aware movement with legal/illegal tile handling.
+2. Basic combat, HP, and attack range.
+3. Turn order and enemy AI stub.
+4. Skills and cooldowns.
+5. Battle result flow back into story runtime.
+
+---
+
+## Update v52 — Terrain + Map Data Foundation
+
+### Strong Architecture Rule: Temporary Entry Point, Permanent Engine
+The Battle Lab route is only a dev/testing shell. It must not become ghost code or a duplicate battle implementation.
+
+Temporary/dev-only:
+
+```text
+frontend/app/dev/battle-lab.tsx
+```
+
+Permanent/reusable battle engine:
+
+```text
+frontend/src/battle/
+```
+
+Before launch, the project must have:
+- no ghost/relic code
+- no abandoned test-only battle logic in production flow
+- no duplicate battle engines
+- no visible stub buttons/text
+- all visible controls working or removed
+
+The Battle Lab can remain hidden behind Dev Mode for QA, but story battles must eventually call the shared battle engine modules, not copied lab logic.
+
+### Added in v52
+- Reusable battle types in `frontend/src/battle/types.ts`
+- Terrain rules in `frontend/src/battle/terrain.ts`
+- First battle scenario data in `frontend/src/battle/maps/cityStreetAmbush.ts`
+- Battle Lab now imports data/helpers from the reusable engine layer instead of owning all logic inline.
+- Movement preview now uses terrain-aware movement costs.
+
+### Terrain Rules v1
+- Stone Walkway: normal movement, no bonus
+- Open Road: fast but exposed, small defense penalty
+- Yard Grass: small defensive bonus
+- Crates/Cover: slower movement, strong defense bonus
+- Narrow Alley: chokepoint defensive tile
+- Fence/Low Wall: slow obstacle tile with defense bonus
+- House/Wall: blocked
+
+### Next Chunk
+v53 should add real unit movement:
+- select unit
+- tap valid blue tile to move
+- prevent illegal moves
+- consume unit action/move state
+- show current phase/action status
+
+---
+
+## Update v53 — Tactical Unit Movement
+
+### Added in v53
+- Battle Lab units are now stateful instead of static scenario tokens.
+- Selecting a unit updates its legal movement preview.
+- Tapping a blue legal tile moves the selected ally unit.
+- Movement respects terrain cost from the reusable terrain engine.
+- Units cannot move into blocked terrain or occupied tiles.
+- Moving a unit marks it as moved for the current test phase.
+- Added Battle Lab controls:
+  - Refresh Movement
+  - Reset Battle Lab
+- Added a lightweight battle log for movement/testing feedback.
+
+### Reusable Battle Engine Additions
+- `frontend/src/battle/movement.ts`
+  - `getUnitAt`
+  - `isTileOccupied`
+  - `calculateLegalMoveTiles`
+  - `canMoveUnitTo`
+  - `moveUnit`
+  - `resetAllyMovement`
+
+### Still Isolated / Dev-Only
+The Battle Lab remains a testing shell. Movement logic lives in reusable `frontend/src/battle/` modules so the future story-integrated battle runtime can call the same movement functions without copying lab code.
+
+### Known Limitations
+- Movement animation is not polished yet.
+- There is no path preview line yet.
+- Enemy units can be selected for inspection, but only allied units can move.
+- No attack execution or turn system yet.
+
+### Next Chunk
+v54 should add basic combat:
+- select target in attack range
+- apply damage
+- terrain defense modifiers
+- HP display updates
+- defeat/KO state
+- simple combat log
+
+
+## Update v54 — Combat / HP / Damage / Defeat State
+
+Changed files:
+- `frontend/app/dev/battle-lab.tsx`
+- `frontend/src/battle/combat.ts`
+- `frontend/src/battle/types.ts`
+- `frontend/src/battle/index.ts`
+- `docs/BATTLE_SYSTEM_PLAN.md`
+- `docs/BARCADIA_CHANGELOG_ROADMAP.md`
+
+Added:
+- Attack targeting from selected ally to enemy units on red attack tiles.
+- HP bars on unit tokens and the selected-unit panel.
+- Terrain-aware damage calculation using defender terrain defense modifiers.
+- Simple counterattack when defender survives and attacker is in defender range.
+- Defeated state for units.
+- Victory/defeat condition detection hooks for the next turn-system chunk.
+
+Known limitations:
+- No player/enemy phase system yet.
+- No enemy AI yet.
+- No combat preview panel yet.
+- No battle result screen yet.
+
+Next planned update:
+- v55 Turns + Enemy AI + victory/defeat flow.
+
+---
+
+## Intermittent Update — Cinematic Dev Viewer
+
+Before continuing the battle chunks, Dev Mode was expanded with a cinematic test viewer so current MP4 cinematics can be previewed in-game.
+
+### Important Asset Rule
+The repo-root `Cinematics/` folder can hold working cinematic files and personal cinematic references. Runtime-tested MP4s are served by the backend from:
+
+```text
+/cinematics/<filename>
+```
+
+Current expected test file:
+
+```text
+Cinematics/Opening Cinematic Latest.mp4
+```
+
+### No Ghost Code Rule
+The Dev Mode cinematic button is temporary/testing-only. The actual reusable concept is a Cinematic Player that Story Builder can eventually call from an event or story scene.
+
+When production cleanup happens, dev-only cinematic entry points must be removed or hidden.
+
+---
+
+## Intermittent Update — Cinematic Orientation Testing
+
+Before continuing battle chunks, Dev Mode cinematic testing was upgraded with two fullscreen presentation options:
+
+- Portrait Fullscreen
+- Landscape Fullscreen
+
+This helps decide whether Barcadia should continue portrait-first, move toward a landscape-first “new era RPG” presentation, or support different cinematic layouts. This is intentionally dev-only and does not alter the battle roadmap.
+
+### No Ghost Code Note
+The cinematic test buttons are temporary Dev Mode utilities. They should be hidden or removed before launch unless turned into a proper production cinematic player triggered by Story Builder events.
+
+### Next Battle Chunk
+Resume with tactical battle turn system + enemy AI + victory/defeat flow.
