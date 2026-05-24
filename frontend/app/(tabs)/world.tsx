@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   api,
   RealmHotspot,
@@ -35,6 +36,9 @@ const REALM_IMAGE_SOURCES: Record<string, any> = {
   "asset:realms/whisperwood_beacon.png": require("../../assets/images/realms/whisperwood_beacon_clean.png"),
   "asset:realms/whisperwood_beacon_clean.png": require("../../assets/images/realms/whisperwood_beacon_clean.png"),
 };
+
+const RUNTIME_SAVE_KEY = "barcadia.dev.runtime.v1";
+const RUNTIME_SNAPSHOTS_KEY = "barcadia.dev.snapshots.v1";
 
 const CHARACTER_IMAGE_SOURCES: Record<string, any> = {
   mom: require("../../assets/images/characters/mom_avatar.png"),
@@ -499,7 +503,27 @@ type DevSnapshot = {
   label: string;
   realmId: string;
   locationId: string;
+  runtimeFlags?: Record<string, boolean | string | number>;
+  runtimeInventory?: RuntimeInventoryItem[];
+  runtimeQuestLog?: RuntimeQuestEntry[];
+  runtimeActionLog?: RuntimeActionEntry[];
+  seenEnterSceneKeys?: Record<string, boolean>;
+  usedHotspotIds?: Record<string, boolean>;
 };
+
+type PersistedRuntimeState = {
+  runtimeFlags: Record<string, boolean | string | number>;
+  runtimeInventory: RuntimeInventoryItem[];
+  runtimeQuestLog: RuntimeQuestEntry[];
+  runtimeActionLog: RuntimeActionEntry[];
+  seenEnterSceneKeys: Record<string, boolean>;
+  usedHotspotIds: Record<string, boolean>;
+};
+
+type RuntimeInventoryItem = { id: string; label: string; count: number };
+type RuntimeQuestEntry = { id: string; status: string; label?: string };
+type RuntimeActionEntry = { id: string; label: string; detail?: string };
+type RuntimeQaIssue = { level: "ok" | "warn" | "bad"; label: string; detail?: string };
 
 function DevModePanel({
   visible,
@@ -514,12 +538,25 @@ function DevModePanel({
   onResetStart,
   onSaveSnapshot,
   onLoadSnapshot,
+  onClearPersistentState,
+  onResetStoryTriggers,
+  runtimeFlags,
+  inventory,
+  questLog,
+  actionLog,
+  onToggleFlag,
+  qaIssues,
+  onRunRuntimeQA,
 }: {
   visible: boolean;
   onClose: () => void;
   data: RealmPayload | null;
   currentSceneId?: string;
   snapshots: DevSnapshot[];
+  runtimeFlags: Record<string, boolean | string | number>;
+  inventory: RuntimeInventoryItem[];
+  questLog: RuntimeQuestEntry[];
+  actionLog: RuntimeActionEntry[];
   onJumpLocation: (realmId: string, locationId: string) => void;
   onPlayScene: (sceneId: string) => void;
   onReplayLocationScene: () => void;
@@ -527,6 +564,11 @@ function DevModePanel({
   onResetStart: () => void;
   onSaveSnapshot: () => void;
   onLoadSnapshot: (snapshot: DevSnapshot) => void;
+  onClearPersistentState: () => void;
+  onResetStoryTriggers: () => void;
+  onToggleFlag: (flagId: string) => void;
+  qaIssues: RuntimeQaIssue[];
+  onRunRuntimeQA: () => void;
 }) {
   const [locationFilter, setLocationFilter] = useState("");
   const [storyFilter, setStoryFilter] = useState("");
@@ -705,9 +747,21 @@ function DevModePanel({
                 >
                   <Text style={styles.devButtonText}>Save Snapshot</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.devButton}
+                  onPress={onResetStoryTriggers}
+                >
+                  <Text style={styles.devButtonText}>Reset Story Triggers</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.devButton, styles.devDangerButton]}
+                  onPress={onClearPersistentState}
+                >
+                  <Text style={styles.devButtonText}>Clear Test Save</Text>
+                </TouchableOpacity>
               </View>
               <Text style={styles.devHint}>
-                Snapshots are temporary testing bookmarks for this app session.
+                Snapshots now include location plus dev runtime state for faster branch testing.
               </Text>
               {snapshots.map((snapshot) => (
                 <TouchableOpacity
@@ -721,6 +775,126 @@ function DevModePanel({
                   </Text>
                 </TouchableOpacity>
               ))}
+            </View>
+
+
+
+            <View style={styles.devSection}>
+              <View style={styles.devSectionHeaderRow}>
+                <Text style={styles.devSectionTitle}>Full Game Testing Toolkit</Text>
+                <Text style={styles.devQaBadge}>v50</Text>
+              </View>
+              <Text style={styles.devHint}>
+                Use this panel when you are testing story branches without restarting the game. Save a checkpoint, run a branch, restore, then try the alternate route.
+              </Text>
+              <View style={styles.devTestingSteps}>
+                <View style={styles.devTestingStep}>
+                  <Text style={styles.devTestingStepNum}>1</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.devRowTitle}>Set your starting point</Text>
+                    <Text style={styles.devRowMeta}>Jump to a location or play a story scene above, then save a checkpoint.</Text>
+                  </View>
+                </View>
+                <View style={styles.devTestingStep}>
+                  <Text style={styles.devTestingStepNum}>2</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.devRowTitle}>Test the branch/action chain</Text>
+                    <Text style={styles.devRowMeta}>Use choices, hotspots, item/flag actions, quests, or battle stubs.</Text>
+                  </View>
+                </View>
+                <View style={styles.devTestingStep}>
+                  <Text style={styles.devTestingStepNum}>3</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.devRowTitle}>Restore and compare</Text>
+                    <Text style={styles.devRowMeta}>Load the checkpoint and test the alternate branch without replaying from the beginning.</Text>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.devButtonGrid}>
+                <TouchableOpacity style={styles.devButton} onPress={onSaveSnapshot}>
+                  <Text style={styles.devButtonText}>Save Checkpoint</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.devButton} onPress={onRunRuntimeQA}>
+                  <Text style={styles.devButtonText}>Run Full QA</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.devButton} onPress={onReplayLocationScene}>
+                  <Text style={styles.devButtonText}>Replay Current Entry Story</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.devButton} onPress={onResetStoryTriggers}>
+                  <Text style={styles.devButtonText}>Reset Branch Replay State</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.devHint}>
+                Soft reset tools keep your current CMS data. Clear Test Save removes local flags/items/quests/snapshots only.
+              </Text>
+            </View>
+
+            <View style={styles.devSection}>
+              <View style={styles.devSectionHeaderRow}>
+                <Text style={styles.devSectionTitle}>Runtime Integration QA</Text>
+                <TouchableOpacity style={styles.devMiniButton} onPress={onRunRuntimeQA}>
+                  <Text style={styles.devMiniButtonText}>Run QA</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.devHint}>
+                Checks current CMS runtime wiring: location hooks, hotspots, story choices, missing targets, and broken branches.
+              </Text>
+              <View style={styles.devList}>
+                {qaIssues.length ? qaIssues.slice(0, 18).map((issue, idx) => (
+                  <View key={`${issue.label}-${idx}`} style={[styles.devQaRow, issue.level === "bad" ? styles.devQaBad : issue.level === "warn" ? styles.devQaWarn : styles.devQaOk]}>
+                    <Text style={styles.devQaBadge}>{issue.level === "bad" ? "FIX" : issue.level === "warn" ? "WARN" : "OK"}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.devRowTitle}>{issue.label}</Text>
+                      {issue.detail ? <Text style={styles.devRowMeta}>{issue.detail}</Text> : null}
+                    </View>
+                  </View>
+                )) : <Text style={styles.devEmpty}>Run QA after loading a location/story setup.</Text>}
+              </View>
+            </View>
+
+            <View style={styles.devSection}>
+              <Text style={styles.devSectionTitle}>Runtime State Debug</Text>
+              <Text style={styles.devHint}>
+                Dev runtime state is persisted locally so testing can continue after app reloads. Clear Test Save resets it.
+              </Text>
+              <View style={styles.devRuntimeGrid}>
+                <View style={styles.devRuntimeBox}>
+                  <Text style={styles.devRuntimeTitle}>Flags</Text>
+                  {Object.keys(runtimeFlags).length ? Object.entries(runtimeFlags).slice(0, 14).map(([key, value]) => (
+                    <TouchableOpacity key={key} style={styles.devRuntimeRow} onPress={() => onToggleFlag(key)}>
+                      <Text style={styles.devRuntimeKey}>{key}</Text>
+                      <Text style={styles.devRuntimeValue}>{String(value)}</Text>
+                    </TouchableOpacity>
+                  )) : <Text style={styles.devEmpty}>No runtime flags set yet.</Text>}
+                </View>
+                <View style={styles.devRuntimeBox}>
+                  <Text style={styles.devRuntimeTitle}>Inventory</Text>
+                  {inventory.length ? inventory.slice(0, 12).map((item) => (
+                    <View key={item.id} style={styles.devRuntimeRow}>
+                      <Text style={styles.devRuntimeKey}>{item.label}</Text>
+                      <Text style={styles.devRuntimeValue}>×{item.count}</Text>
+                    </View>
+                  )) : <Text style={styles.devEmpty}>No dev items gained yet.</Text>}
+                </View>
+                <View style={styles.devRuntimeBox}>
+                  <Text style={styles.devRuntimeTitle}>Quests / Battles</Text>
+                  {questLog.length ? questLog.slice(0, 12).map((quest) => (
+                    <View key={`${quest.id}-${quest.status}`} style={styles.devRuntimeRow}>
+                      <Text style={styles.devRuntimeKey}>{quest.label || quest.id}</Text>
+                      <Text style={styles.devRuntimeValue}>{quest.status}</Text>
+                    </View>
+                  )) : <Text style={styles.devEmpty}>No quest/battle test entries yet.</Text>}
+                </View>
+                <View style={styles.devRuntimeBox}>
+                  <Text style={styles.devRuntimeTitle}>Recent Actions</Text>
+                  {actionLog.length ? actionLog.slice(0, 8).map((entry) => (
+                    <View key={entry.id} style={styles.devRuntimeAction}>
+                      <Text style={styles.devRuntimeKey}>{entry.label}</Text>
+                      {entry.detail ? <Text style={styles.devRowMeta}>{entry.detail}</Text> : null}
+                    </View>
+                  )) : <Text style={styles.devEmpty}>No actions yet.</Text>}
+                </View>
+              </View>
             </View>
           </ScrollView>
         </View>
@@ -740,6 +914,15 @@ export default function WorldScreen() {
   const [activeDialogue, setActiveDialogue] = useState<ActiveDialogue>(null);
   const [devOpen, setDevOpen] = useState(false);
   const [devSnapshots, setDevSnapshots] = useState<DevSnapshot[]>([]);
+  const [runtimeFlags, setRuntimeFlags] = useState<Record<string, boolean | string | number>>({});
+  const [runtimeInventory, setRuntimeInventory] = useState<RuntimeInventoryItem[]>([]);
+  const [runtimeQuestLog, setRuntimeQuestLog] = useState<RuntimeQuestEntry[]>([]);
+  const [runtimeActionLog, setRuntimeActionLog] = useState<RuntimeActionEntry[]>([]);
+  const [seenEnterSceneKeys, setSeenEnterSceneKeys] = useState<Record<string, boolean>>({});
+  const [usedHotspotIds, setUsedHotspotIds] = useState<Record<string, boolean>>({});
+  const [runtimeHydrated, setRuntimeHydrated] = useState(false);
+  const [actionToast, setActionToast] = useState("");
+  const [runtimeQaIssues, setRuntimeQaIssues] = useState<RuntimeQaIssue[]>([]);
   const fade = useRef(new Animated.Value(1)).current;
 
   const load = useCallback(async () => {
@@ -754,6 +937,67 @@ export default function WorldScreen() {
     }
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const hydrateRuntime = async () => {
+      try {
+        const [savedState, savedSnapshots] = await Promise.all([
+          AsyncStorage.getItem(RUNTIME_SAVE_KEY),
+          AsyncStorage.getItem(RUNTIME_SNAPSHOTS_KEY),
+        ]);
+        if (cancelled) return;
+        if (savedState) {
+          const parsed = JSON.parse(savedState) as Partial<PersistedRuntimeState>;
+          setRuntimeFlags(parsed.runtimeFlags || {});
+          setRuntimeInventory(parsed.runtimeInventory || []);
+          setRuntimeQuestLog(parsed.runtimeQuestLog || []);
+          setRuntimeActionLog(parsed.runtimeActionLog || []);
+          setSeenEnterSceneKeys(parsed.seenEnterSceneKeys || {});
+          setUsedHotspotIds(parsed.usedHotspotIds || {});
+        }
+        if (savedSnapshots) {
+          const parsedSnapshots = JSON.parse(savedSnapshots);
+          if (Array.isArray(parsedSnapshots)) setDevSnapshots(parsedSnapshots);
+        }
+      } catch (e) {
+        console.warn("[Barcadia] Could not hydrate dev runtime state", e);
+      } finally {
+        if (!cancelled) setRuntimeHydrated(true);
+      }
+    };
+    hydrateRuntime();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!runtimeHydrated) return;
+    const saveRuntime = async () => {
+      const payload: PersistedRuntimeState = {
+        runtimeFlags,
+        runtimeInventory,
+        runtimeQuestLog,
+        runtimeActionLog,
+        seenEnterSceneKeys,
+        usedHotspotIds,
+      };
+      try {
+        await AsyncStorage.setItem(RUNTIME_SAVE_KEY, JSON.stringify(payload));
+      } catch (e) {
+        console.warn("[Barcadia] Could not persist dev runtime state", e);
+      }
+    };
+    saveRuntime();
+  }, [runtimeHydrated, runtimeFlags, runtimeInventory, runtimeQuestLog, runtimeActionLog, seenEnterSceneKeys, usedHotspotIds]);
+
+  useEffect(() => {
+    if (!runtimeHydrated) return;
+    AsyncStorage.setItem(RUNTIME_SNAPSHOTS_KEY, JSON.stringify(devSnapshots)).catch((e) =>
+      console.warn("[Barcadia] Could not persist dev snapshots", e),
+    );
+  }, [runtimeHydrated, devSnapshots]);
+
   useFocusEffect(
     useCallback(() => {
       setMode("scene");
@@ -765,9 +1009,12 @@ export default function WorldScreen() {
   );
 
   useEffect(() => {
-    if (!data?.current_location_id || !data.active_story_scenes?.length) return;
+    if (!runtimeHydrated || !data?.current_location_id || !data.active_story_scenes?.length) return;
     const scene = firstEnterLocationScene(data.active_story_scenes);
     if (!scene?.id) return;
+    const key = `${data.current_realm || "realm"}:${data.current_location_id}:${scene.id}`;
+    if (seenEnterSceneKeys[key]) return;
+    setSeenEnterSceneKeys((seen) => ({ ...seen, [key]: true }));
     setActiveDialogue({
       lines: linesForStoryScene(scene),
       choices: choicesForStoryScene(scene),
@@ -776,7 +1023,7 @@ export default function WorldScreen() {
     });
     setDialogueIndex(0);
     setDialogueDismissed(false);
-  }, [data?.current_location_id, data?.active_story_scenes]);
+  }, [runtimeHydrated, data?.current_realm, data?.current_location_id, data?.active_story_scenes, seenEnterSceneKeys]);
 
   const isReal = data?.current_realm !== "fantasy";
   const accent = data?.realm?.accent || (isReal ? "#38BDF8" : "#A855F7");
@@ -847,43 +1094,231 @@ export default function WorldScreen() {
     }
   };
 
+  const logRuntimeAction = (label: string, detail?: string) => {
+    setActionToast(detail ? `${label}: ${detail}` : label);
+    setRuntimeActionLog((items) => [
+      { id: `action_${Date.now()}_${Math.random()}`, label, detail },
+      ...items,
+    ].slice(0, 20));
+    setTimeout(() => setActionToast(""), 2400);
+  };
+
+  const setRuntimeFlag = (flagId?: string, value: boolean | string | number = true) => {
+    if (!flagId) return;
+    setRuntimeFlags((flags) => ({ ...flags, [flagId]: value }));
+    logRuntimeAction("Set Flag", `${flagId} = ${String(value)}`);
+  };
+
+  const giveRuntimeItem = (itemId?: string, label?: string) => {
+    if (!itemId) return;
+    setRuntimeInventory((items) => {
+      const existing = items.find((item) => item.id === itemId);
+      if (existing) {
+        return items.map((item) =>
+          item.id === itemId ? { ...item, count: item.count + 1 } : item,
+        );
+      }
+      return [{ id: itemId, label: label || itemId, count: 1 }, ...items];
+    });
+    logRuntimeAction("Give Item", label || itemId);
+  };
+
+  const recordQuestRuntime = (id?: string, status = "started", label?: string) => {
+    if (!id) return;
+    setRuntimeQuestLog((items) => [
+      { id, status, label },
+      ...items.filter((item) => !(item.id === id && item.status === status)),
+    ].slice(0, 30));
+    logRuntimeAction(status === "battle_stub" ? "Battle Stub" : "Quest Update", `${label || id} → ${status}`);
+  };
+
+  const missingTarget = (origin: string, action: string, message: string) => {
+    logRuntimeAction(`${origin} Missing Target`, `${action}: ${message}`);
+  };
+
+  const hasActionTarget = (source: any, keys: string[]) =>
+    keys.some((key) => String(source?.[key] || "").trim().length > 0);
+
+  const runRuntimeQaCheck = () => {
+    const issues: RuntimeQaIssue[] = [];
+    if (!data) {
+      issues.push({ level: "bad", label: "No runtime data loaded", detail: "The game could not load realm/story payload data." });
+      setRuntimeQaIssues(issues);
+      return;
+    }
+
+    const scenes = Array.isArray(data.story_scenes) ? data.story_scenes : [];
+    const currentLocationId = data.current_location_id || data.location?.id;
+    issues.push({
+      level: currentLocationId ? "ok" : "bad",
+      label: "Current location resolved",
+      detail: currentLocationId || "Missing current location id.",
+    });
+
+    const activeEnterScenes = Array.isArray(data.active_story_scenes) ? data.active_story_scenes : [];
+    issues.push({
+      level: activeEnterScenes.length ? "ok" : "warn",
+      label: "Location story triggers",
+      detail: activeEnterScenes.length ? `${activeEnterScenes.length} active story scene(s) attached here.` : "No attached enter-location story for this location.",
+    });
+
+    coerceHotspots(data.location?.hotspots).forEach((hotspot) => {
+      const action = String(hotspot.action_type || "inspect").toLowerCase();
+      const label = hotspot.label || hotspot.id || "Hotspot";
+      if (["change_scene", "travel", "move_location", "location"].includes(action) && !hasActionTarget(hotspot, ["linked_location", "location_id", "target_location_id", "target_id"])) {
+        issues.push({ level: "bad", label: `Hotspot missing travel target: ${label}`, detail: "Set Linked Location / target location in the CMS." });
+      }
+      if (["open_dialogue", "dialogue"].includes(action) && !hasActionTarget(hotspot, ["story_scene_id", "linked_dialogue", "next_id", "next_scene_id"])) {
+        issues.push({ level: "warn", label: `Hotspot has no linked story: ${label}`, detail: "It will fall back to generic inspect text." });
+      }
+      if (["give_item", "item"].includes(action) && !hasActionTarget(hotspot, ["item_id", "target_item_id", "target_id"])) {
+        issues.push({ level: "bad", label: `Hotspot missing item target: ${label}`, detail: "Set the item id/target item in the CMS." });
+      }
+      if (["start_battle", "battle"].includes(action) && !hasActionTarget(hotspot, ["battle_id", "target_battle_id", "target_id"])) {
+        issues.push({ level: "warn", label: `Battle hotspot uses placeholder battle: ${label}`, detail: "Create/link a battle id when Battle Builder is ready." });
+      }
+    });
+
+    scenes.forEach((scene) => {
+      choicesForStoryScene(scene).forEach((choice, index) => {
+        const label = `${scene.title || scene.id} → choice ${index + 1}`;
+        const action = String((choice as any).action_type || choice.type || (choice.next_id ? "open_dialogue" : "")).toLowerCase();
+        const targetSceneId = (choice as any).story_scene_id || (choice as any).next_scene_id || choice.next_id || (choice as any).linked_dialogue;
+        if (!action && !targetSceneId) {
+          issues.push({ level: "bad", label: `Choice has no outcome: ${label}`, detail: choice.text || "Untitled choice" });
+        } else if (targetSceneId && !findStoryScene(scenes, targetSceneId)) {
+          issues.push({ level: "bad", label: `Choice links to missing story scene: ${label}`, detail: String(targetSceneId) });
+        } else if (["travel", "change_scene", "location"].includes(action) && !hasActionTarget(choice, ["linked_location", "location_id", "target_location_id", "target_id"])) {
+          issues.push({ level: "bad", label: `Choice travel missing destination: ${label}`, detail: choice.text });
+        } else {
+          issues.push({ level: "ok", label: `Choice outcome wired: ${label}`, detail: choice.text });
+        }
+      });
+    });
+
+    if (!issues.some((issue) => issue.level === "bad")) {
+      issues.unshift({ level: "ok", label: "Runtime QA passed critical checks", detail: "No broken branch/action targets found in the current payload." });
+    }
+    setRuntimeQaIssues(issues);
+    const bad = issues.filter((issue) => issue.level === "bad").length;
+    const warn = issues.filter((issue) => issue.level === "warn").length;
+    logRuntimeAction("Runtime QA", `${bad} fix / ${warn} warn`);
+  };
+
+  const runEffects = (effects?: any[]) => {
+    if (!Array.isArray(effects)) return;
+    effects.forEach((effect) => {
+      const type = String(effect?.type || effect?.action_type || "").toLowerCase();
+      const target = effect?.target_id || effect?.target || effect?.flag || effect?.flag_id || effect?.item_id || effect?.quest || effect?.quest_id || effect?.battle_id || effect?.location_id;
+      if (type === "set_flag") setRuntimeFlag(target, effect?.value ?? true);
+      else if (type === "give_item") giveRuntimeItem(target, effect?.label || effect?.name);
+      else if (type === "start_quest") recordQuestRuntime(target, "started", effect?.label || effect?.name);
+      else if (type === "advance_quest") recordQuestRuntime(target, "advanced", effect?.label || effect?.name);
+      else if (type === "complete_quest") recordQuestRuntime(target, "completed", effect?.label || effect?.name);
+      else if (type === "start_battle") recordQuestRuntime(target, "battle_stub", effect?.label || effect?.name);
+    });
+  };
+
+  const playStoryScene = (scene: StoryScene) => {
+    runEffects((scene as any).start_effects);
+    setMode("scene");
+    setActiveDialogue({
+      lines: linesForStoryScene(scene),
+      choices: choicesForStoryScene(scene),
+      choicePrompt: choicePromptForStoryScene(scene),
+      scene_id: scene.id,
+    });
+    setDialogueIndex(0);
+    setDialogueDismissed(false);
+    logRuntimeAction("Play Story", scene.title || scene.id);
+  };
+
+  const executeRuntimeAction = (source: any, origin = "Action") => {
+    if (!source) return;
+    const action = String(source.action_type || source.type || (source.next_id ? "open_dialogue" : "inspect")).toLowerCase();
+    runEffects(source.effects);
+    if ((source.disable_after_use || source.one_time || source.once) && source.id) {
+      setUsedHotspotIds((items) => ({ ...items, [String(source.id)]: true }));
+      logRuntimeAction("Disable Hotspot", source.label || source.id);
+    }
+
+    if (["open_computer", "computer"].includes(action)) {
+      logRuntimeAction(origin, "Open Computer");
+      return openMode("computer", "Opening Computer...");
+    }
+    if (["rest", "sleep"].includes(action)) {
+      logRuntimeAction(origin, "Rest");
+      return rest();
+    }
+    if (["change_scene", "travel", "move_location", "location"].includes(action)) {
+      const destination = source.linked_location || source.location_id || source.target_location_id || source.target_id;
+      if (destination) {
+        logRuntimeAction(origin, `Travel → ${destination}`);
+        return traverseToLocation(destination, `Going to ${destination}...`);
+      }
+      return missingTarget(origin, action, "No linked location/destination was configured.");
+    }
+    if (["give_item", "item"].includes(action)) {
+      const itemTarget = source.item_id || source.target_item_id || source.target_id;
+      if (!itemTarget) return missingTarget(origin, action, "No item target was configured.");
+      giveRuntimeItem(itemTarget, source.item_label || source.label || source.text);
+      if (!source.story_scene_id && !source.linked_dialogue && !source.next_id) return;
+    }
+    if (["set_flag", "flag"].includes(action)) {
+      const flagTarget = source.flag || source.flag_id || source.target_flag_id || source.target_id;
+      if (!flagTarget) return missingTarget(origin, action, "No flag target was configured.");
+      setRuntimeFlag(flagTarget, source.value ?? true);
+      if (!source.story_scene_id && !source.linked_dialogue && !source.next_id) return;
+    }
+    if (["start_quest", "advance_quest", "complete_quest", "quest"].includes(action)) {
+      const status = action === "advance_quest" ? "advanced" : action === "complete_quest" ? "completed" : "started";
+      const questTarget = source.quest || source.quest_id || source.target_quest_id || source.target_id;
+      if (!questTarget) return missingTarget(origin, action, "No quest target was configured.");
+      recordQuestRuntime(questTarget, status, source.quest_label || source.label);
+      if (!source.story_scene_id && !source.linked_dialogue && !source.next_id) return;
+    }
+    if (["start_battle", "battle"].includes(action)) {
+      const battleTarget = source.battle_id || source.target_battle_id || source.target_id;
+      if (!battleTarget) return missingTarget(origin, action, "No battle id was configured yet.");
+      recordQuestRuntime(battleTarget, "battle_stub", source.battle_label || source.label || source.text);
+      if (!source.story_scene_id && !source.linked_dialogue && !source.next_id) return;
+    }
+
+    const linkedSceneId = source.story_scene_id || source.linked_dialogue || source.next_id || source.next_scene_id;
+    const linkedScene = findStoryScene(data?.story_scenes, linkedSceneId);
+    if (linkedScene) return playStoryScene(linkedScene);
+
+    if (origin !== "Choice") {
+      const label = source.label || source.text || "Narration";
+      setActiveDialogue({
+        lines: [{ speaker: label, body: `You inspect ${label}.` }],
+        choices: [],
+        scene_id: undefined,
+      });
+      setDialogueIndex(0);
+      setDialogueDismissed(false);
+    } else {
+      logRuntimeAction("Choice", source.text || "Choice selected");
+      setDialogueDismissed(true);
+    }
+  };
+
   const openDialogueForHotspot = (hotspot: RealmHotspot) => {
     const label = hotspot.label || "Narration";
     const linkedSceneId = hotspot.story_scene_id || hotspot.linked_dialogue;
     const linkedScene = findStoryScene(data?.story_scenes, linkedSceneId);
-    const lines = linkedScene
-      ? linesForStoryScene(linkedScene)
-      : label.toLowerCase().includes("mom")
-        ? kitchenLines
-        : [{ speaker: label, body: `You inspect ${label}.` }];
-    setActiveDialogue({
-      lines,
-      choices: choicesForStoryScene(linkedScene),
-      choicePrompt: choicePromptForStoryScene(linkedScene),
-      scene_id: linkedScene?.id,
-    });
+    if (linkedScene) return playStoryScene(linkedScene);
+    const lines = label.toLowerCase().includes("mom")
+      ? kitchenLines
+      : [{ speaker: label, body: `You inspect ${label}.` }];
+    setActiveDialogue({ lines, choices: [], scene_id: undefined });
     setDialogueIndex(0);
     setDialogueDismissed(false);
   };
 
   const handleHotspot = (hotspot: RealmHotspot) => {
     if (activeDialogue && !dialogueDismissed) return;
-    const action = hotspot.action_type || "inspect";
-    if (action === "open_computer")
-      return openMode("computer", "Opening Computer...");
-    if (action === "rest") return rest();
-    if (action === "change_scene")
-      return traverseToLocation(
-        hotspot.linked_location || hotspot.target_id || "",
-        `Going to ${hotspot.label || "location"}...`,
-      );
-    if (action === "open_dialogue") return openDialogueForHotspot(hotspot);
-    if (action === "give_item")
-      return openDialogueForHotspot({
-        ...hotspot,
-        label: hotspot.label || "Item",
-      });
-    return openDialogueForHotspot(hotspot);
+    return executeRuntimeAction(hotspot, "Hotspot");
   };
 
   const windowLines: DialogueLine[] = [
@@ -916,50 +1351,19 @@ export default function WorldScreen() {
       return;
     }
     if (activeDialogue?.choices?.length) return;
+    const finishedScene = findStoryScene(data?.story_scenes, activeDialogue?.scene_id);
+    runEffects((finishedScene as any)?.effects);
     setDialogueDismissed(true);
   };
 
   const chooseDialogueOption = (choice: StorySceneChoice) => {
-    if (
-      (choice.action_type || "").toLowerCase() === "change_scene" &&
-      choice.linked_location
-    ) {
-      setActiveDialogue(null);
-      setDialogueDismissed(true);
-      return traverseToLocation(
-        choice.linked_location,
-        `Going to ${choice.linked_location}...`,
-      );
-    }
-    const nextId =
-      choice.next_id || choice.next_scene_id || choice.story_scene_id;
-    const nextScene = findStoryScene(data?.story_scenes, nextId);
-    if (nextScene) {
-      setActiveDialogue({
-        lines: linesForStoryScene(nextScene),
-        choices: choicesForStoryScene(nextScene),
-        choicePrompt: choicePromptForStoryScene(nextScene),
-        scene_id: nextScene.id,
-      });
-      setDialogueIndex(0);
-      setDialogueDismissed(false);
-      return;
-    }
-    setDialogueDismissed(true);
+    executeRuntimeAction(choice, "Choice");
   };
 
   const playStorySceneById = (sceneId: string) => {
     const scene = findStoryScene(data?.story_scenes, sceneId);
     if (!scene) return;
-    setMode("scene");
-    setActiveDialogue({
-      lines: linesForStoryScene(scene),
-      choices: choicesForStoryScene(scene),
-      choicePrompt: choicePromptForStoryScene(scene),
-      scene_id: scene.id,
-    });
-    setDialogueIndex(0);
-    setDialogueDismissed(false);
+    playStoryScene(scene);
     setDevOpen(false);
   };
 
@@ -1026,12 +1430,54 @@ export default function WorldScreen() {
       label: `${data.location?.name || data.current_location_id} @ ${new Date().toLocaleTimeString()}`,
       realmId: data.current_realm,
       locationId: data.current_location_id,
+      runtimeFlags,
+      runtimeInventory,
+      runtimeQuestLog,
+      runtimeActionLog,
+      seenEnterSceneKeys,
+      usedHotspotIds,
     };
     setDevSnapshots((items) => [snapshot, ...items].slice(0, 8));
+    logRuntimeAction("Save Snapshot", snapshot.label);
   };
 
   const loadDevSnapshot = (snapshot: DevSnapshot) => {
+    setRuntimeFlags(snapshot.runtimeFlags || {});
+    setRuntimeInventory(snapshot.runtimeInventory || []);
+    setRuntimeQuestLog(snapshot.runtimeQuestLog || []);
+    setRuntimeActionLog(snapshot.runtimeActionLog || []);
+    setSeenEnterSceneKeys(snapshot.seenEnterSceneKeys || {});
+    setUsedHotspotIds(snapshot.usedHotspotIds || {});
+    logRuntimeAction("Load Snapshot", snapshot.label);
     jumpLocationForDev(snapshot.realmId, snapshot.locationId);
+  };
+
+  const clearPersistentRuntimeState = async () => {
+    setRuntimeFlags({});
+    setRuntimeInventory([]);
+    setRuntimeQuestLog([]);
+    setRuntimeActionLog([]);
+    setSeenEnterSceneKeys({});
+    setUsedHotspotIds({});
+    setDevSnapshots([]);
+    setActiveDialogue(null);
+    setDialogueIndex(0);
+    setDialogueDismissed(true);
+    await Promise.all([
+      AsyncStorage.removeItem(RUNTIME_SAVE_KEY),
+      AsyncStorage.removeItem(RUNTIME_SNAPSHOTS_KEY),
+    ]).catch((e) => console.warn("[Barcadia] Could not clear dev save", e));
+    setActionToast("Dev test save cleared");
+    setTimeout(() => setActionToast(""), 2200);
+  };
+
+  const resetStoryTriggersForDev = () => {
+    setSeenEnterSceneKeys({});
+    setUsedHotspotIds({});
+    setActiveDialogue(null);
+    setDialogueIndex(0);
+    setDialogueDismissed(true);
+    logRuntimeAction("Reset Story Triggers", "Enter-location scenes and one-time hotspots can replay.");
   };
 
   const returnToScene = () => {
@@ -1053,7 +1499,16 @@ export default function WorldScreen() {
     );
   }
 
-  const adminHotspots = coerceHotspots(data?.location?.hotspots);
+  const isHotspotAvailable = (hotspot: RealmHotspot) => {
+    const hotspotId = String(hotspot.id || "");
+    if (hotspotId && usedHotspotIds[hotspotId]) return false;
+    const requiredFlag = (hotspot as any).condition_flag || (hotspot as any).required_flag;
+    if (!requiredFlag) return true;
+    const expected = (hotspot as any).condition_value ?? true;
+    return runtimeFlags[requiredFlag] === expected;
+  };
+
+  const adminHotspots = coerceHotspots(data?.location?.hotspots).filter(isHotspotAvailable);
   const dialogueToShow =
     activeDialogue && !dialogueDismissed ? activeDialogue.lines : null;
 
@@ -1130,7 +1585,23 @@ export default function WorldScreen() {
           onResetStart={resetToBedroomForDev}
           onSaveSnapshot={saveDevSnapshot}
           onLoadSnapshot={loadDevSnapshot}
+          onClearPersistentState={clearPersistentRuntimeState}
+          onResetStoryTriggers={resetStoryTriggersForDev}
+          runtimeFlags={runtimeFlags}
+          inventory={runtimeInventory}
+          questLog={runtimeQuestLog}
+          actionLog={runtimeActionLog}
+          onToggleFlag={(flagId) =>
+            setRuntimeFlags((flags) => ({ ...flags, [flagId]: !Boolean(flags[flagId]) }))
+          }
+          qaIssues={runtimeQaIssues}
+          onRunRuntimeQA={runRuntimeQaCheck}
         />
+      ) : null}
+      {actionToast ? (
+        <View style={styles.actionToast} pointerEvents="none">
+          <Text style={styles.actionToastText}>{actionToast}</Text>
+        </View>
       ) : null}
       {transitionLabel ? <TransitionOverlay label={transitionLabel} /> : null}
     </ImageBackground>
@@ -1341,6 +1812,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(216,180,254,0.38)",
   },
+  devDangerButton: {
+    backgroundColor: "rgba(127,29,29,0.58)",
+    borderColor: "rgba(248,113,113,0.42)",
+  },
   devButtonText: { color: "#FEF3C7", fontSize: 12, fontWeight: "900" },
   devHint: {
     color: "#A7B3C7",
@@ -1355,6 +1830,133 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(74,222,128,0.24)",
   },
+
+  devSectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  devMiniButton: {
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    backgroundColor: "rgba(14,165,233,0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(125,211,252,0.42)",
+  },
+  devMiniButtonText: { color: "#BAE6FD", fontSize: 11, fontWeight: "900" },
+  devQaRow: {
+    minHeight: 42,
+    borderRadius: 12,
+    padding: 9,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    borderWidth: 1,
+  },
+  devQaOk: {
+    backgroundColor: "rgba(20,83,45,0.22)",
+    borderColor: "rgba(74,222,128,0.24)",
+  },
+  devQaWarn: {
+    backgroundColor: "rgba(120,53,15,0.24)",
+    borderColor: "rgba(251,191,36,0.26)",
+  },
+  devQaBad: {
+    backgroundColor: "rgba(127,29,29,0.30)",
+    borderColor: "rgba(248,113,113,0.34)",
+  },
+  devQaBadge: {
+    width: 42,
+    textAlign: "center",
+    color: "#FEF3C7",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+  },
+
+  devTestingSteps: {
+    gap: 8,
+    marginBottom: 10,
+  },
+  devTestingStep: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "flex-start",
+    borderWidth: 1,
+    borderColor: "rgba(251,191,36,0.18)",
+    backgroundColor: "rgba(15,23,42,0.56)",
+    borderRadius: 14,
+    padding: 10,
+  },
+  devTestingStepNum: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    textAlign: "center",
+    textAlignVertical: "center",
+    color: "#2A1608",
+    backgroundColor: "#FBBF24",
+    fontWeight: "900",
+    overflow: "hidden",
+  },
+
+  devRuntimeGrid: { gap: 10 },
+  devRuntimeBox: {
+    borderRadius: 14,
+    padding: 10,
+    backgroundColor: "rgba(255,255,255,0.035)",
+    borderWidth: 1,
+    borderColor: "rgba(250,204,21,0.16)",
+    gap: 6,
+  },
+  devRuntimeTitle: {
+    color: "#FDE68A",
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  devRuntimeRow: {
+    minHeight: 32,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    backgroundColor: "rgba(2,6,23,0.58)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  devRuntimeAction: {
+    borderRadius: 10,
+    padding: 8,
+    backgroundColor: "rgba(2,6,23,0.58)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+  },
+  devRuntimeKey: { color: "#E5E7EB", fontSize: 11, fontWeight: "900", flex: 1 },
+  devRuntimeValue: { color: "#86EFAC", fontSize: 11, fontWeight: "900" },
+  actionToast: {
+    position: "absolute",
+    left: 18,
+    right: 18,
+    top: 128,
+    zIndex: 50,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    backgroundColor: "rgba(8,5,18,0.92)",
+    borderWidth: 1,
+    borderColor: "rgba(250,204,21,0.46)",
+    shadowColor: "#A855F7",
+    shadowOpacity: 0.55,
+    shadowRadius: 18,
+  },
+  actionToastText: { color: "#FEF3C7", fontSize: 12, fontWeight: "900", textAlign: "center" },
   hotspot: {
     position: "absolute",
     width: 92,
