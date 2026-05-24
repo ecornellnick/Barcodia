@@ -54,7 +54,11 @@ export type AdventureMap = { tier: number; name: string; subtitle: string; biome
 export type RealmHotspot = { id?: string; label?: string; icon?: string; color?: string; x_pct?: number; y_pct?: number; width_pct?: number; height_pct?: number; action_type?: string; linked_location?: string; linked_dialogue?: string; story_scene_id?: string; item_id?: string; quest_id?: string; battle_id?: string; target_id?: string; condition_flag?: string; archived?: boolean };
 export type RealmLocation = { id: string; name: string; subtitle?: string; type?: string; image?: string; unlocked?: boolean; current_default?: boolean; hotspots?: (string | RealmHotspot)[] };
 export type RealmInfo = { id: string; label: string; short_label?: string; accent?: string; locations: RealmLocation[] };
-export type RealmPayload = { current_realm: string; current_location_id: string; realm: RealmInfo; location: RealmLocation; realms: RealmInfo[] };
+export type StorySceneLine = { speaker?: string; text?: string; body?: string; type?: string; portrait?: string; emotion?: string };
+export type StorySceneChoice = { text?: string; next_id?: string; next_scene_id?: string; story_scene_id?: string; linked_location?: string; action_type?: string; effect_summary?: string };
+export type StoryScene = { id: string; title?: string; location_id?: string; character_id?: string; trigger_type?: string; priority?: number; enabled?: boolean; choice_prompt?: string; lines?: StorySceneLine[]; dialogue_lines?: StorySceneLine[]; choices?: StorySceneChoice[]; effects?: any[]; conditions?: any[] };
+export type StoryCharacter = { id?: string; name?: string; portrait?: string; avatar?: string; role?: string; notes?: string };
+export type RealmPayload = { current_realm: string; current_location_id: string; realm: RealmInfo; location: RealmLocation; realms: RealmInfo[]; active_story_scenes?: StoryScene[]; story_scenes?: StoryScene[]; story_characters?: StoryCharacter[] };
 export type ScanResult = Item;
 
 async function request<T>(path: string, options: { method?: string; body?: any; auth?: boolean } = {}): Promise<T> {

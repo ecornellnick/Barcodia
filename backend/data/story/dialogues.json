@@ -15,11 +15,13 @@
         "type": "dialogue",
         "speaker": "Narrator",
         "portrait": "",
-        "text": ""
+        "text": "NEW STORY SCENE 1! YOU GOT HERE!"
       }
     ],
     "choices": [],
-    "effects": []
+    "effects": [],
+    "locked": false,
+    "choice_prompt": "What do you do?"
   },
   {
     "id": "chapter_2_start_1779540332162",
@@ -27,7 +29,7 @@
     "chapter": "Chapter 2",
     "scene_type": "Narration",
     "enabled": true,
-    "location_id": "",
+    "location_id": "whisperwood_forest",
     "character_id": "",
     "trigger_type": "enter_location",
     "priority": 100,
@@ -35,12 +37,59 @@
     "lines": [
       {
         "type": "narration",
+        "speaker": "Player",
+        "portrait": "",
+        "text": "What is this place..."
+      },
+      {
+        "type": "dialogue",
+        "speaker": "new_character_1779562475711",
+        "portrait": "",
+        "text": "Muffins!"
+      },
+      {
+        "type": "dialogue",
         "speaker": "Narrator",
         "portrait": "",
-        "text": ""
+        "text": "A dark gloomy forest.."
+      }
+    ],
+    "choices": [
+      {
+        "text": "Run away?",
+        "next_id": "story_scene_1779537396403"
+      },
+      {
+        "text": "Fight",
+        "next_id": "new_story_scene_3"
+      }
+    ],
+    "effects": [],
+    "locked": false,
+    "choice_prompt": "What do you do?"
+  },
+  {
+    "id": "new_story_scene_3",
+    "title": "New Story Scene 3",
+    "chapter": "Chapter 3",
+    "scene_type": "Narration",
+    "enabled": true,
+    "locked": false,
+    "location_id": "",
+    "character_id": "",
+    "trigger_type": "tap_npc",
+    "priority": 100,
+    "conditions": [],
+    "lines": [
+      {
+        "type": "dialogue",
+        "speaker": "Narrator",
+        "portrait": "",
+        "text": "Story Scene 3 is here!"
       }
     ],
     "choices": [],
-    "effects": []
+    "effects": [],
+    "choice_prompt": "What do you do?"
   }
 ]

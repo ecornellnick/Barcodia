@@ -1613,6 +1613,132 @@ def find_location(realm: dict, loc_id: str) -> Optional[dict]:
     return next((l for l in realm.get("locations", []) if l.get("id") == loc_id), None)
 
 
+
+
+STORY_DIALOGUES_FILE = ROOT_DIR / "data" / "story" / "dialogues.json"
+
+
+def read_story_dialogues_for_game() -> list:
+    """Read Story Builder scenes for the runtime game UI.
+
+    The admin has evolved over time, so this accepts all known shapes:
+    - a plain list of scenes
+    - {"data": [...]} wrappers
+    - dictionaries keyed by id
+    """
+    import json
+    if not STORY_DIALOGUES_FILE.exists():
+        return []
+    try:
+        raw = json.loads(STORY_DIALOGUES_FILE.read_text())
+    except Exception:
+        return []
+    if isinstance(raw, dict) and isinstance(raw.get("data"), list):
+        raw = raw.get("data")
+    elif isinstance(raw, dict):
+        raw = list(raw.values())
+    if not isinstance(raw, list):
+        return []
+    scenes = []
+    for idx, scene in enumerate(raw):
+        if isinstance(scene, dict) and not scene.get("archived") and scene.get("enabled", True) is not False:
+            normalized = dict(scene)
+            normalized.setdefault("id", f"story_scene_{idx}")
+            normalized.setdefault("title", normalized.get("name") or normalized.get("id"))
+            normalized.setdefault("trigger_type", normalized.get("trigger") or "tap_npc")
+            normalized.setdefault("priority", 100)
+            normalized.setdefault("lines", normalized.get("dialogue_lines") or [])
+            normalized.setdefault("choices", [])
+            normalized.setdefault("effects", [])
+            normalized.setdefault("conditions", [])
+            scenes.append(normalized)
+    return scenes
+
+
+
+
+STORY_CHARACTERS_FILE = ROOT_DIR / "data" / "story" / "characters.json"
+
+
+def read_story_characters_for_game() -> list:
+    """Read Character Builder data for runtime dialogue name/avatar resolution."""
+    import json
+    if not STORY_CHARACTERS_FILE.exists():
+        return []
+    try:
+        raw = json.loads(STORY_CHARACTERS_FILE.read_text())
+    except Exception:
+        return []
+    if isinstance(raw, dict) and isinstance(raw.get("data"), list):
+        raw = raw.get("data")
+    elif isinstance(raw, dict):
+        raw = list(raw.values())
+    if not isinstance(raw, list):
+        return []
+    out = []
+    for idx, char in enumerate(raw):
+        if isinstance(char, dict) and not char.get("archived"):
+            c = dict(char)
+            c.setdefault("id", c.get("name") or f"character_{idx}")
+            c.setdefault("name", c.get("id"))
+            out.append(c)
+    return out
+
+def story_value_matches(actual: Any, expected: Any) -> bool:
+    if isinstance(expected, str):
+        lowered = expected.lower().strip()
+        if lowered == "true":
+            expected = True
+        elif lowered == "false":
+            expected = False
+    return actual == expected
+
+
+def story_conditions_met(scene: dict, user: dict) -> bool:
+    """Small first pass for story gating.
+
+    Supports simple flag conditions now. Missing flags are treated as False.
+    Full persistent story-state/player-flag support can expand this later.
+    """
+    conditions = scene.get("conditions") or []
+    if not isinstance(conditions, list):
+        return True
+    flags = user.get("story_flags") or user.get("flags") or {}
+    if not isinstance(flags, dict):
+        flags = {}
+    for cond in conditions:
+        if not isinstance(cond, dict):
+            continue
+        flag = cond.get("flag") or cond.get("id") or cond.get("key")
+        if not flag:
+            continue
+        op = cond.get("operator") or "equals"
+        expected = cond.get("value", True)
+        actual = flags.get(flag, False)
+        if op == "equals" and not story_value_matches(actual, expected):
+            return False
+        if op == "not_equals" and story_value_matches(actual, expected):
+            return False
+    return True
+
+
+def scene_attached_to_location(scene: dict, location_id: str) -> bool:
+    if not location_id:
+        return False
+    candidates = [
+        scene.get("location_id"),
+        scene.get("location"),
+        scene.get("linked_location"),
+        scene.get("background_id"),
+        scene.get("scene_location_id"),
+    ]
+    return any(str(c or "") == str(location_id) for c in candidates)
+
+
+def story_scenes_for_location(location_id: str, user: dict) -> list:
+    scenes = [s for s in read_story_dialogues_for_game() if scene_attached_to_location(s, location_id) and story_conditions_met(s, user)]
+    return sorted(scenes, key=lambda s: int(s.get("priority") or 100), reverse=True)
+
 def build_realm_payload(user: dict) -> dict:
     data = read_realm_data()
     realms = data.get("realms", [])
@@ -1620,12 +1746,21 @@ def build_realm_payload(user: dict) -> dict:
     realm = find_realm(data, current_realm_id) or (realms[0] if realms else {"id": "real", "label": "Real World", "locations": []})
     current_location_id = user.get("current_location_id") or default_location_for(realm).get("id")
     location = find_location(realm, current_location_id) or default_location_for(realm)
+    location_story_scenes = story_scenes_for_location(location.get("id"), user)
+    all_story_scenes = [s for s in read_story_dialogues_for_game() if story_conditions_met(s, user)]
+    story_characters = read_story_characters_for_game()
     return {
         "current_realm": realm.get("id"),
         "current_location_id": location.get("id"),
         "realm": realm,
         "location": location,
         "realms": realms,
+        # These fields are the runtime bridge from Admin Story Builder -> Game.
+        # active_story_scenes are attached to the current location/background.
+        # story_scenes lets hotspots open linked Story Builder scenes by id.
+        "active_story_scenes": location_story_scenes,
+        "story_scenes": all_story_scenes,
+        "story_characters": story_characters,
     }
 
 

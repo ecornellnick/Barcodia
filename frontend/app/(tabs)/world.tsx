@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
-import { api, RealmHotspot, RealmPayload } from "@/src/lib/api";
+import { api, RealmHotspot, RealmPayload, StoryCharacter, StoryScene, StorySceneChoice } from "@/src/lib/api";
 import { COLORS } from "@/src/lib/theme";
 
 const BACKEND_BASE = process.env.EXPO_PUBLIC_BACKEND_URL?.replace(/\/api$/, "") || "";
@@ -18,16 +18,42 @@ const REALM_IMAGE_SOURCES: Record<string, any> = {
 
 const CHARACTER_IMAGE_SOURCES: Record<string, any> = {
   mom: require("../../assets/images/characters/mom_avatar.png"),
+  mom_avatar: require("../../assets/images/characters/mom_avatar.png"),
 };
+
+function normalizeKey(value?: string): string {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function characterBySpeaker(characters: StoryCharacter[] | undefined, speaker?: string): StoryCharacter | undefined {
+  const key = normalizeKey(speaker);
+  if (!key || !Array.isArray(characters)) return undefined;
+  return characters.find((c) => normalizeKey(c.id) === key || normalizeKey(c.name) === key);
+}
+
+function displaySpeaker(speaker?: string, characters?: StoryCharacter[]): string {
+  const raw = String(speaker || "").trim();
+  if (!raw) return "Narration";
+  const c = characterBySpeaker(characters, raw);
+  return c?.name || raw.replace(/^new_character_\d+$/, "Character");
+}
+
+function portraitKeyForSpeaker(speaker?: string, portrait?: string, characters?: StoryCharacter[]): string {
+  const c = characterBySpeaker(characters, speaker);
+  return normalizeKey(String(portrait || c?.portrait || c?.avatar || c?.name || speaker || ""));
+}
+
 
 type WorldMode = "scene" | "computer" | "rest";
 
 type DialogueLine = {
   speaker?: string;
   body: string;
+  portrait?: string;
+  emotion?: string;
 };
 
-type ActiveDialogue = { lines: DialogueLine[]; speaker?: string } | null;
+type ActiveDialogue = { lines: DialogueLine[]; choices?: StorySceneChoice[]; scene_id?: string; choicePrompt?: string } | null;
 
 function imageSource(image?: string): any {
   if (!image) return REALM_IMAGE_SOURCES["asset:realms/bedroom.png"];
@@ -69,6 +95,42 @@ function iconForHotspot(hotspot: RealmHotspot): string {
   return "✧";
 }
 
+
+function normalizeStoryLine(line: any): DialogueLine {
+  return {
+    speaker: line?.speaker || (line?.type === "narration" ? "Narration" : undefined),
+    body: String(line?.body ?? line?.text ?? ""),
+    portrait: line?.portrait,
+    emotion: line?.emotion,
+  };
+}
+
+function linesForStoryScene(scene?: StoryScene | null): DialogueLine[] {
+  if (!scene) return [];
+  const rawLines = Array.isArray(scene.lines) ? scene.lines : Array.isArray(scene.dialogue_lines) ? scene.dialogue_lines : [];
+  const lines = rawLines.map(normalizeStoryLine).filter((line) => line.body.trim().length > 0);
+  if (lines.length) return lines;
+  return [{ speaker: "Narration", body: scene.title ? `Story scene: ${scene.title}` : "A story scene begins..." }];
+}
+
+function choicesForStoryScene(scene?: StoryScene | null): StorySceneChoice[] {
+  return Array.isArray(scene?.choices) ? scene!.choices!.filter((choice) => (choice.text || "").trim().length > 0) : [];
+}
+
+function choicePromptForStoryScene(scene?: StoryScene | null): string {
+  return String(scene?.choice_prompt || "What do you do?");
+}
+
+function findStoryScene(scenes: StoryScene[] | undefined, id?: string): StoryScene | undefined {
+  if (!id || !Array.isArray(scenes)) return undefined;
+  return scenes.find((scene) => scene.id === id || scene.title === id);
+}
+
+function firstEnterLocationScene(scenes: StoryScene[] | undefined): StoryScene | undefined {
+  if (!Array.isArray(scenes)) return undefined;
+  return scenes.find((scene) => (scene.trigger_type || "").toLowerCase() === "enter_location") || scenes[0];
+}
+
 function coerceHotspots(raw: any): RealmHotspot[] {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -90,25 +152,38 @@ function TransitionOverlay({ label }: { label: string }) {
   );
 }
 
-function DialogueBox({ lines, index, onNext, speaker }: { lines: DialogueLine[]; index: number; onNext: () => void; speaker?: string }) {
-  const line = lines[index] || lines[0];
-  const activeSpeaker = speaker || line.speaker || "Narration";
-  const isMom = activeSpeaker.toLowerCase() === "mom";
+function DialogueBox({ lines, index, choices = [], choicePrompt = "What do you do?", characters = [], onNext, onChoice }: { lines: DialogueLine[]; index: number; choices?: StorySceneChoice[]; choicePrompt?: string; characters?: StoryCharacter[]; onNext: () => void; onChoice: (choice: StorySceneChoice) => void }) {
+  const showChoices = index >= lines.length && choices.length > 0;
+  const line = showChoices ? lines[Math.max(0, lines.length - 1)] : (lines[index] || lines[0]);
+  const activeSpeaker = showChoices ? "Your Choice" : displaySpeaker(line?.speaker, characters);
+  const portraitKey = portraitKeyForSpeaker(line?.speaker, line?.portrait, characters);
+  const portraitSource = CHARACTER_IMAGE_SOURCES[portraitKey];
   return (
-    <TouchableOpacity activeOpacity={0.9} onPress={onNext} style={styles.dialogueBox}>
-      <View style={styles.dialoguePortrait}>
-        {isMom ? (
-          <Image source={CHARACTER_IMAGE_SOURCES.mom} style={styles.dialoguePortraitImage} />
-        ) : (
-          <Text style={styles.dialogueSigilText}>✦</Text>
-        )}
-      </View>
-      <View style={styles.dialogueTextWrap}>
-        <Text style={styles.dialogueSpeaker}>{activeSpeaker}</Text>
-        <Text style={styles.dialogueBody}>{line.body}</Text>
-      </View>
-      <Text style={styles.dialogueAdvance}>⌄</Text>
-    </TouchableOpacity>
+    <View style={styles.dialogueWrap}>
+      <TouchableOpacity activeOpacity={0.9} onPress={onNext} style={styles.dialogueBox}>
+        <View style={styles.dialoguePortrait}>
+          {!showChoices && portraitSource ? (
+            <Image source={portraitSource} style={styles.dialoguePortraitImage} />
+          ) : (
+            <Text style={styles.dialogueSigilText}>{showChoices ? "?" : "✦"}</Text>
+          )}
+        </View>
+        <View style={styles.dialogueTextWrap}>
+          <Text style={styles.dialogueSpeaker}>{activeSpeaker}</Text>
+          <Text style={styles.dialogueBody}>{showChoices ? choicePrompt : line.body}</Text>
+        </View>
+        {!showChoices ? <Text style={styles.dialogueAdvance}>⌄</Text> : null}
+      </TouchableOpacity>
+      {showChoices ? (
+        <View style={styles.choicePanel}>
+          {choices.map((choice, choiceIndex) => (
+            <TouchableOpacity key={`${choice.text || "choice"}-${choiceIndex}`} style={styles.choiceButton} activeOpacity={0.86} onPress={() => onChoice(choice)}>
+              <Text style={styles.choiceButtonText}>{choice.text || "Continue"}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -222,6 +297,15 @@ export default function WorldScreen() {
   useFocusEffect(useCallback(() => { setMode("scene"); setDialogueIndex(0);
       setDialogueDismissed(false); setActiveDialogue(null); load(); }, [load]));
 
+  useEffect(() => {
+    if (!data?.current_location_id || !data.active_story_scenes?.length) return;
+    const scene = firstEnterLocationScene(data.active_story_scenes);
+    if (!scene?.id) return;
+    setActiveDialogue({ lines: linesForStoryScene(scene), choices: choicesForStoryScene(scene), choicePrompt: choicePromptForStoryScene(scene), scene_id: scene.id });
+    setDialogueIndex(0);
+    setDialogueDismissed(false);
+  }, [data?.current_location_id, data?.active_story_scenes]);
+
   const isReal = data?.current_realm !== "fantasy";
   const accent = data?.realm?.accent || (isReal ? "#38BDF8" : "#A855F7");
   const image = useMemo(() => imageSource(data?.location?.image || (isReal ? "asset:realms/bedroom.png" : "asset:realms/whisperwood_beacon.png")), [data, isReal]);
@@ -265,15 +349,20 @@ export default function WorldScreen() {
 
   const openDialogueForHotspot = (hotspot: RealmHotspot) => {
     const label = hotspot.label || "Narration";
-    const lines = label.toLowerCase().includes("mom") ? kitchenLines : [
-      { speaker: label, body: hotspot.story_scene_id || hotspot.linked_dialogue ? `This hotspot is linked to story scene: ${hotspot.story_scene_id || hotspot.linked_dialogue}.` : `You inspect ${label}.` },
-    ];
-    setActiveDialogue({ lines, speaker: label.toLowerCase().includes("mom") ? "Mom" : undefined });
+    const linkedSceneId = hotspot.story_scene_id || hotspot.linked_dialogue;
+    const linkedScene = findStoryScene(data?.story_scenes, linkedSceneId);
+    const lines = linkedScene
+      ? linesForStoryScene(linkedScene)
+      : label.toLowerCase().includes("mom")
+        ? kitchenLines
+        : [{ speaker: label, body: `You inspect ${label}.` }];
+    setActiveDialogue({ lines, choices: choicesForStoryScene(linkedScene), choicePrompt: choicePromptForStoryScene(linkedScene), scene_id: linkedScene?.id });
     setDialogueIndex(0);
     setDialogueDismissed(false);
   };
 
   const handleHotspot = (hotspot: RealmHotspot) => {
+    if (activeDialogue && !dialogueDismissed) return;
     const action = hotspot.action_type || "inspect";
     if (action === "open_computer") return openMode("computer", "Opening Computer...");
     if (action === "rest") return rest();
@@ -296,9 +385,31 @@ export default function WorldScreen() {
   const advanceDialogue = (lines: DialogueLine[]) => {
     if (dialogueIndex < lines.length - 1) {
       setDialogueIndex(dialogueIndex + 1);
-    } else {
-      setDialogueDismissed(true);
+      return;
     }
+    if (activeDialogue?.choices?.length && dialogueIndex < lines.length) {
+      setDialogueIndex(lines.length);
+      return;
+    }
+    if (activeDialogue?.choices?.length) return;
+    setDialogueDismissed(true);
+  };
+
+  const chooseDialogueOption = (choice: StorySceneChoice) => {
+    if ((choice.action_type || "").toLowerCase() === "change_scene" && choice.linked_location) {
+      setActiveDialogue(null);
+      setDialogueDismissed(true);
+      return traverseToLocation(choice.linked_location, `Going to ${choice.linked_location}...`);
+    }
+    const nextId = choice.next_id || choice.next_scene_id || choice.story_scene_id;
+    const nextScene = findStoryScene(data?.story_scenes, nextId);
+    if (nextScene) {
+      setActiveDialogue({ lines: linesForStoryScene(nextScene), choices: choicesForStoryScene(nextScene), choicePrompt: choicePromptForStoryScene(nextScene), scene_id: nextScene.id });
+      setDialogueIndex(0);
+      setDialogueDismissed(false);
+      return;
+    }
+    setDialogueDismissed(true);
   };
 
   const returnToScene = () => {
@@ -327,12 +438,12 @@ export default function WorldScreen() {
               <Text style={[styles.realmName, { color: accent }]}>{data?.realm?.label || (isReal ? "Real World" : "Fantasy Realm")}</Text>
             </View>
 
-            {adminHotspots.map((hotspot, idx) => (
+            {!dialogueToShow ? adminHotspots.map((hotspot, idx) => (
               <PercentHotspot key={hotspot.id || `${hotspot.label}-${idx}`} hotspot={hotspot} onPress={() => handleHotspot(hotspot)} />
-            ))}
+            )) : null}
 
             {error ? <View style={styles.warning}><Text style={styles.warningText}>Using local realm data. {error}</Text></View> : null}
-            {dialogueToShow ? <DialogueBox lines={dialogueToShow} index={dialogueIndex} onNext={() => advanceDialogue(dialogueToShow)} speaker={activeDialogue?.speaker} /> : null}
+            {dialogueToShow ? <DialogueBox lines={dialogueToShow} index={dialogueIndex} choices={activeDialogue?.choices || []} choicePrompt={activeDialogue?.choicePrompt} characters={data?.story_characters || []} onNext={() => advanceDialogue(dialogueToShow)} onChoice={chooseDialogueOption} /> : null}
           </View>
         </LinearGradient>
       </Animated.View>
@@ -367,7 +478,8 @@ const styles = StyleSheet.create({
   transitionBarInner: { width: "72%", height: "100%", backgroundColor: "#22D3EE" },
   miniBack: { position: "absolute", top: 54, left: 18, zIndex: 5, borderRadius: 999, paddingHorizontal: 13, paddingVertical: 9, backgroundColor: "rgba(3,7,18,0.62)", borderWidth: 1, borderColor: "rgba(255,255,255,0.14)" },
   miniBackText: { color: "white", fontSize: 13, fontWeight: "900" },
-  dialogueBox: { position: "absolute", left: 16, right: 16, bottom: 112, minHeight: 124, borderRadius: 20, padding: 16, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(3,10,22,0.86)", borderWidth: 1, borderColor: "rgba(56,189,248,0.46)", shadowColor: "#22D3EE", shadowOpacity: 0.28, shadowRadius: 18 },
+  dialogueWrap: { position: "absolute", left: 16, right: 16, bottom: 22, zIndex: 18 },
+  dialogueBox: { minHeight: 124, borderRadius: 20, padding: 16, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(3,10,22,0.90)", borderWidth: 1, borderColor: "rgba(56,189,248,0.46)", shadowColor: "#22D3EE", shadowOpacity: 0.28, shadowRadius: 18 },
   dialoguePortrait: { width: 64, height: 64, borderRadius: 18, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(56,189,248,0.5)", backgroundColor: "rgba(14,165,233,0.14)", marginRight: 14, overflow: "hidden" },
   dialoguePortraitImage: { width: "100%", height: "100%", resizeMode: "cover" },
   dialogueSigilText: { color: "#7DD3FC", fontSize: 28, fontWeight: "900" },
@@ -375,6 +487,9 @@ const styles = StyleSheet.create({
   dialogueSpeaker: { color: "#67E8F9", fontSize: 16, fontWeight: "900", marginBottom: 5 },
   dialogueBody: { color: "#EAF6FF", fontSize: 14, lineHeight: 20, fontWeight: "700" },
   dialogueAdvance: { color: "#67E8F9", fontSize: 28, fontWeight: "900", marginLeft: 8, alignSelf: "flex-end" },
+  choicePanel: { marginTop: 8, gap: 8, padding: 10, borderRadius: 18, backgroundColor: "rgba(4,8,16,0.84)", borderWidth: 1, borderColor: "rgba(125,211,252,0.28)" },
+  choiceButton: { borderRadius: 14, paddingVertical: 12, paddingHorizontal: 14, backgroundColor: "rgba(14,165,233,0.18)", borderWidth: 1, borderColor: "rgba(125,211,252,0.42)" },
+  choiceButtonText: { color: "#EAF6FF", fontSize: 14, fontWeight: "900" },
   resultPanel: { width: "92%", borderRadius: 22, padding: 20, alignItems: "center", backgroundColor: "rgba(3,10,22,0.88)", borderWidth: 1, borderColor: "rgba(52,211,153,0.45)" },
   resultIcon: { width: 70, height: 70, borderRadius: 35, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(34,197,94,0.18)", borderWidth: 1, borderColor: "rgba(74,222,128,0.55)", marginBottom: 12 },
   resultIconText: { color: "#86EFAC", fontSize: 36, fontWeight: "900" },
