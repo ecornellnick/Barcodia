@@ -489,3 +489,222 @@ Dev Mode testing toolkit: BUILT ENOUGH TO TEST
 Tactical battle system: NEXT MAJOR MILESTONE
 ```
 
+---
+
+# Update — Tactical Battle Skill + Cooldown System
+
+## Date
+May 2026
+
+## Why This Was Added
+Before committing the tactical battle roadmap, we decided heroes must support learnable skills and cooldowns. This should be designed now, before the Langrisser-style battle prototype begins, so the battle engine, unit data, and future Battle Builder CMS do not need to be rewritten later.
+
+## Design Goal
+Barcadia tactical battles should support a Langrisser-inspired skill system where heroes can learn and equip active/passive skills, and each skill can have its own cooldown behavior.
+
+## Langrisser Mobile Reference Notes
+Langrisser Mobile uses hero skills with dedicated skill buttons. Some skills replace or augment a normal attack, some are passive, and some have cooldowns after use while others can be used every turn. Skills commonly define properties such as cost, cooldown, range, and span/area. Many skills use cooldown values such as 1, 2, 3, or more turns depending on power and role. Some effects reduce cooldowns after combat, on kill, or through special talents/equipment.
+
+Reference examples and observations:
+- Langrisser skill data commonly includes **Cooldown**, **Range**, and **Span** fields.
+- Some faction/buff skills use cooldowns around 3 turns and effects lasting multiple turns.
+- Some transformation or powerful skills can have longer cooldowns such as 6 turns.
+- Some talents or effects reduce cooldown after combat, after dealing damage, or after defeating an enemy.
+- Some skills have effectively no cooldown and can be used every turn.
+
+### Reference Links
+- Langrisser skills database / examples: https://wikigrisser-next.com/skills
+- Langrisser terrain and tactical systems background: https://langrisser.fandom.com/wiki/Terrain
+- Langrisser general guide mentioning skill buttons and cooldowns: https://toucharcade.com/2019/01/25/langrisser-guide-tips-cheats-strategies-and-how-to-play-free-longer/
+- Example community note on cooldown reduction effects: https://www.reddit.com/r/langrisser/comments/arwjjl/your_dads_enchantment_guide/
+
+## Barcadia Skill System Requirements
+
+### Skill Ownership
+Skills must support both exclusive and shared usage.
+
+A skill can be:
+- exclusive to one hero
+- available to multiple heroes
+- class-based
+- unlocked by story progress
+- unlocked by level/progression
+- granted temporarily by equipment, story events, or battlefield conditions
+
+### Hero Skill Loadout
+Each hero should eventually have:
+- learned skills list
+- equipped skill slots
+- active skills
+- passive skills
+- ultimate/signature skill slot later
+
+Early prototype can start simple:
+
+```text
+Hero
+- Basic Attack
+- Strike
+- Guard Break
+
+Sister
+- Basic Magic
+- Heal
+- Courage Blessing
+
+Tank
+- Basic Attack
+- Guard
+- Shield Wall
+
+Archer
+- Basic Shot
+- Long Shot
+- Pinning Shot
+```
+
+## Skill Data Model Draft
+
+Recommended future JSON/DB-style structure:
+
+```json
+{
+  "id": "skill_guard",
+  "name": "Guard",
+  "description": "Protects a nearby ally and reduces incoming damage.",
+  "type": "active",
+  "category": "defense",
+  "allowed_heroes": ["tank"],
+  "allowed_classes": ["guardian", "knight"],
+  "cooldown_turns": 2,
+  "initial_cooldown_turns": 0,
+  "range": 1,
+  "area": "single_ally",
+  "targeting": "ally",
+  "effects": [
+    { "type": "guard", "duration_turns": 1 },
+    { "type": "damage_reduction", "value": 0.25, "duration_turns": 1 }
+  ],
+  "tags": ["defensive", "tank", "support"]
+}
+```
+
+## Cooldown Design
+
+### Core Rule
+When a skill is used, it becomes unavailable for its configured cooldown.
+
+Example:
+
+```text
+Turn 1: Hero uses Power Strike, cooldown_turns = 2
+Turn 2: Power Strike cooldown remaining = 1
+Turn 3: Power Strike available again
+```
+
+### Cooldown Properties
+Each skill should support:
+- `cooldown_turns`: default cooldown after use
+- `initial_cooldown_turns`: optional cooldown at battle start
+- `current_cooldown`: runtime-only state per unit
+- `cooldown_reduction_effects`: future effects that reduce cooldowns
+- `cooldown_start_timing`: when cooldown begins, usually after skill use/action resolves
+
+### Admin Editable
+Cooldowns must be editable in the future Battle/Skill CMS.
+
+Admin should be able to set:
+- cooldown turns
+- starting cooldown
+- whether skill can be used after moving
+- whether skill ends the unit’s action
+- whether skill can counterattack
+- targeting type
+- range
+- area of effect
+- effects/buffs/debuffs
+
+## Runtime Rules for v1 Prototype
+
+For the first battle prototype, keep cooldowns simple.
+
+Minimum system:
+- every unit has a list of skills
+- active skills have cooldown turns
+- cooldown decreases by 1 at the start of that unit’s next turn or at the start of the owning side’s phase
+- skill button disabled when cooldown > 0
+- tooltip shows “Cooldown: X turn(s)”
+- using a skill consumes the unit’s action unless marked otherwise
+
+Recommended starting skills:
+
+### Hero
+- **Strike** — melee attack, cooldown 1
+- **Rally** — small self buff, cooldown 3
+
+### Sister
+- **Heal** — restore HP to ally, cooldown 2
+- **Spark** — ranged magic attack, cooldown 1
+
+### Tank
+- **Guard** — protect ally / damage reduction, cooldown 2
+- **Shield Bash** — melee attack + push/stun later, cooldown 2
+
+### Archer
+- **Long Shot** — ranged attack, cooldown 1
+- **Pinning Shot** — ranged attack + movement debuff later, cooldown 2
+
+## Future Skill Builder CMS
+
+Add a future CMS page:
+
+```text
+Skills Builder
+```
+
+Capabilities:
+- create/edit skill
+- assign skill to hero/class
+- mark exclusive/shared
+- set cooldown
+- set range/area
+- define effects
+- choose icon
+- choose animation/VFX
+- preview skill description
+- validate missing targets/effects
+
+## Battle Builder Integration
+
+Battle Builder should later let us:
+- choose available heroes
+- choose enemy skills
+- choose starting cooldowns if needed
+- script special cooldown events
+- add battle objectives tied to skill usage
+
+Example:
+
+```text
+Tutorial Objective:
+Use Sister's Heal skill on Hero.
+```
+
+## Changelog Entry
+
+### Added to Roadmap Before Tactical Battle Prototype
+- Hero skill system planning
+- Shared/exclusive skill ownership planning
+- Skill cooldown design
+- Admin-editable cooldown requirements
+- Skill Builder CMS future page
+- Langrisser-inspired cooldown reference notes
+
+## Next Battle Planning Step
+Before implementation, design the first battle prototype data model with:
+- battle map
+- terrain grid
+- units
+- basic skills
+- cooldown runtime state
+- action execution flow
