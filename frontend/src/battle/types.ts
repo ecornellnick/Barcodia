@@ -18,6 +18,27 @@ export type BattleUnitClass =
   | "rogue"
   | "noncombatant";
 
+export type BattleSkillTarget = "enemy" | "ally" | "self";
+export type BattleSkillKind = "attack" | "heal" | "debuff";
+
+export type BattleSkillDefinition = {
+  id: string;
+  name: string;
+  description: string;
+  kind: BattleSkillKind;
+  target: BattleSkillTarget;
+  rangeMin?: number;
+  range: number;
+  cooldown: number;
+  powerMultiplier?: number;
+  flatBonus?: number;
+  healAmount?: number;
+  shared?: boolean;
+  exclusiveTo?: BattleUnitClass[];
+};
+
+export type SkillCooldownState = Record<string, number>;
+
 export type BattleUnit = {
   id: string;
   name: string;
@@ -39,6 +60,8 @@ export type BattleUnit = {
   hasAttacked?: boolean;
   defeated?: boolean;
   actionState?: "ready" | "moved" | "attacked" | "done";
+  skillIds?: string[];
+  cooldowns?: SkillCooldownState;
   note?: string;
 };
 

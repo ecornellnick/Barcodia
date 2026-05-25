@@ -1,420 +1,351 @@
-# Barcadia — Tactical Battle System Plan
+# Barcadia Battle System Plan
 
-_Last updated: May 2026_
+_Last updated: May 2026 — v60 roadmap update_
 
-## Direction
-The Barcadia battle system will become a Langrisser-inspired, turn-based tactical RPG system using a square grid.
+## Battle System Direction
 
-The battle system will start in an isolated **Battle Test Lab** so it does not break the current story/location runtime.
+Barcadia's battle system is moving toward a Langrisser-inspired, square-grid tactical RPG system. The first prototype remains isolated inside the dev-only Battle Lab until accepted. The reusable battle engine should live under `frontend/src/battle/`, while the dev route under `frontend/app/dev/battle-lab.tsx` is a temporary shell only.
 
-## First Battle Milestone
+## Core Rule: No Ghost / Relic Code
 
-### Battle 001 — City Street Ambush
-The hero leaves home and is tricked by a child pretending to need help. The child steals his money and runs away. When the hero gives chase, 2–3 thugs block him near the street outside his house.
+- Dev-only wrappers may exist temporarily for testing.
+- Reusable logic must live in the battle engine modules.
+- Before launch, remove or hide dev-only routes/buttons.
+- No dead buttons, stub labels, placeholder behavior, orphaned files, or old experimental code should remain.
+- If a visible control exists, it must do something real.
 
-The child is present in the back/corner as a non-combatant:
-- cannot move
-- cannot attack
-- not a win/loss target unless scripted later
-- exists for story context
+## Battle Map Art Rule
 
-## Visual References
-Battle references are stored in:
+Battle map background images must **never contain baked-in grid lines**.
+
+The battle art should be clean environment art only. The grid is a runtime overlay controlled by the game.
+
+### Runtime Grid Behavior
+
+- Grid visible: user/dev toggle ON.
+- Grid hidden: user/dev toggle OFF.
+- Movement tiles and attack tiles still appear when tactically relevant.
+- Normal player mode should not show debug movement-cost numbers.
+- Movement cost/debug labels belong behind a Dev Mode toggle only.
+
+## Battle Map Coordinate System
+
+Each battle map should be treated as a coordinate grid over a clean background image.
+
+Example:
 
 ```text
-ConceptArt/BattleReferences/
+battle_id: city_street_ambush
+image: frontend/assets/images/battle/city_street_ambush.png
+width: 12
+height: 8
+coords: x/y grid positions
 ```
 
-Current references:
-- `conceptArtBattle.png` — bright JRPG tactical battle art direction reference
-- `firstBattleMap.png` — first battle map mockup outside hero's home
+The map art is visual. The battle data defines:
 
-Strong visual rule:
-> Battle maps should stay bright, readable, vibrant, anime/JRPG-inspired, and not muddy/dark/grainy.
+- grid width/height
+- tile terrain type
+- passability
+- movement cost
+- defense modifier
+- attack modifier if needed
+- spawn points
+- blocked cells
+- special cells/events
 
-## Prototype Chunks
+## Terrain and Passability
 
-### v51 — Battle Lab + Battlefield Foundation
-- isolated dev battle screen
-- square grid
-- first battle map shell
-- terrain tiles
-- units placed
-- blue move overlay
-- red attack overlay preview
+The admin must eventually support editing terrain and passability per grid tile.
 
-### v52 — Terrain + Map Data Foundation
-- reusable battle engine folder
-- terrain definitions
+### Example Terrain Types
+
+| Terrain | Foot Units | Flying Units | Notes |
+|---|---|---|---|
+| Stone Road | Passable | Passable | Normal movement |
+| Grass | Passable | Passable | Default terrain |
+| Forest | Passable, higher cost | Passable | Defensive bonus / cover |
+| Water | Blocked or high cost | Passable | Flyers can cross; foot usually cannot |
+| Wall / Building | Blocked | Blocked | No unit can pass |
+| Crates / Barrels | Blocked or cover | Passable/blocked depending height | Could provide cover |
+| Fence | Blocked or partial | Passable | Battle-specific |
+| Mountain / Cliff | Usually blocked or high cost | Passable | Defensive/high-ground logic later |
+
+### Movement Rules
+
+- Infantry/foot units cannot pass through walls/buildings.
+- Foot units usually cannot cross water unless special terrain/bridge exists.
+- Flyers can pass over water and some terrain obstacles.
+- Flyers cannot pass through true walls/buildings unless explicitly allowed.
+- Terrain movement cost must be unit-type-aware.
+
+## Admin Battle Map Controls — Future Requirement
+
+The Battle Builder CMS should include a grid/terrain editor.
+
+Admin controls needed:
+
+- upload/select clean battle map art
+- define grid width and height
+- preview runtime grid overlay
+- click tile to set terrain type
+- click tile to mark passable/blocked
+- define movement cost by unit type
+- define defense bonus
+- define attack bonus if needed
+- define spawn tiles for player/enemy/non-combatants
+- define special event tiles
+- lock important battle maps against accidental deletion
+- archive/restore battle maps safely
+
+## Langrisser-Style Tactical Overlay Rules
+
+### Unit Selection
+
+When the player selects a unit:
+
+- Blue/green movement tiles appear for valid movement squares.
+- Reachability must be terrain-aware.
+- Occupied and blocked tiles must be excluded.
+- Debug numbers should not appear in normal mode.
+
+### Normal Attack
+
+When the player chooses normal attack or has an enemy in range:
+
+- Red attack tiles appear.
+- Attackable enemies are highlighted clearly.
+- Player should immediately know who can be attacked.
+
+### Skill Targeting
+
+Skills define their own targeting rules.
+
+A skill should define:
+
+- range
+- shape
+- target type: enemy, ally, self, tile, area
+- cooldown
+- whether it can counterattack / be counterattacked
+- effect type: damage, heal, buff, debuff, movement, etc.
+
+Examples:
+
+```text
+Normal Attack
+range: 1
+shape: adjacent
+target: enemy
+```
+
+```text
+Recover
+range: 2
+shape: single target
+target: ally
+cooldown: 2
+```
+
+```text
+Line Slash
+range: 3
+shape: line
+target: enemy
+cooldown: 3
+```
+
+The renderer should generate targeting overlays from the skill definition rather than hardcoding them.
+
+## Skill Buttons / Battle HUD
+
+The battle HUD should include Langrisser-inspired skill buttons, likely lower-right in landscape mode.
+
+Skill buttons should show:
+
+- icon
+- name or short label
+- cooldown overlay
+- disabled state if unusable
+- selected/active state
+- target preview when selected
+
+Future controls:
+
+- Attack
+- Skill 1
+- Skill 2
+- Skill 3
+- Stand / Wait / End Action
+- End Turn
+- Danger Zone
+- Grid On/Off
+
+## First Battle: Battle 001 — City Street Ambush
+
+Narrative:
+
+The hero leaves home in the JRPG city. A child pretends to need help, steals the hero's money, and runs away. When the hero chases him, two or three thugs block the way and attack. The child is hidden in the back of the enemy area as a non-combatant.
+
+### Requirements
+
+- Hero is in plain real-world clothes.
+- Battle occurs outside/near the hero's home, not in a giant plaza.
+- Map should be bright, vibrant, anime/JRPG style.
+- No baked-in grid lines on the art.
+- Runtime grid overlays the clean map.
+- Child is non-combatant: cannot move, cannot attack, does not count as enemy defeated.
+- Enemies: 2–3 thugs.
+- Terrain: stone road, fences/walls, crates/barrels, grass/flowerbeds, possible alley/cover.
+
+## Current Chunk Roadmap
+
+### v51 — Battle Lab Foundation
+- Isolated dev-only battle screen
+- First battle map asset
+- Basic grid overlay
+- Hero + thugs + hidden child
+
+### v52 — Terrain + Map Data
+- reusable terrain definitions
 - City Street Ambush scenario data
 - terrain-aware movement preview
 
 ### v53 — Unit Movement
-- select unit
-- terrain-aware move range
-- pathing
-- tap legal blue tile to move
+- selectable unit
+- move range
+- movement execution
 - blocked/occupied tile prevention
-- moved-state tracking
 
-### v54 — Combat / HP / Damage / Defeat State
-- basic attacks
-- attack range targeting
-- HP bars
-- terrain defense modifiers
-- melee/ranged rules
-- simple counterattack
-- defeated unit state
-- victory/defeat condition detection
+### v54 — Combat / HP / Damage
+- attack selection
+- attack range visualization
+- HP/damage
+- defeat state
 
-### v55 — Turns + Enemy AI
-- player phase
-- enemy phase
-- each unit acts once
+### v57 — Turn System + Enemy AI
+- player phase / enemy phase
+- End Turn
 - simple thug AI
-- win/loss screen
+- victory/defeat
 
-### v56 — Langrisser Feel Layer
-- unit info panel
+### v58 — Skills + Cooldowns
+- skill definitions
+- cooldowns
+- shared/exclusive skills
+- skill availability states
+
+### v59 — Combat UX Layer
 - combat preview
-- terrain tooltip
-- floating damage
-- movement tween
-- attack effects
-- placeholder sprites
+- terrain bonus readout
+- cooldown display
+- attack readability
 
-### v57 — Story Integration
-- story choice or hotspot starts battle
-- battle victory triggers story scene/effects
-- battle defeat triggers alternate story scene/effects
+### v60 — Roadmap Correction: Clean Maps + Runtime Grid + Admin Terrain Editor
+- battle maps must not include baked-in grid lines
+- add runtime grid toggle
+- add movement/attack overlay rules
+- add admin terrain/passability requirements
+- add flyer/foot movement distinction
 
-## Terrain Plan
+## Upcoming
 
-| Terrain | Move Cost | Defense | Notes |
-|---|---:|---:|---|
-| Road / Stone | 1 | 0 | common city terrain |
-| Grass | 1 | 0 | normal |
-| Garden / Bush | 2 | +10–20% | light cover |
-| Crates / Barrels | blocked or 2 | +10% | cover/choke point |
-| Fence / Wall | blocked | n/a | obstacle |
-| Stairs | 2 | optional | elevation later |
-| Water / Canal | blocked | n/a | unless special unit later |
+### v61 — Gridless Map Asset + Runtime Grid Toggle
+- replace current battle background with clean no-grid art
+- runtime grid toggle
+- remove debug cost numbers from normal mode
+- dev-only movement-cost labels
 
-## Unit Plan
+### v62 — Tactical Camera / Landscape
+- landscape battle lab mode
+- pan/zoom
+- fit view
+- focus selected unit
 
-First major 4v4 test later:
-- Hero
-- Sister
-- Tank
-- Archer
-- 4 foes
+### v63 — Langrisser Overlay Parity
+- blue/green movement tiles
+- red attack tiles
+- enemy target highlight
+- skill-defined target overlays
 
-First narrative battle may start smaller:
-- Hero vs 2–3 thugs
-- child non-combatant
+### v64 — Skill HUD Buttons
+- lower-right skill tray
+- cooldown icons
+- Stand/Wait action
 
-## Skill + Cooldown System
+### v65 — Battle QA / Cleanup
+- no stubs
+- no ghost code
+- no dead controls
+- clean acceptance checklist
 
-### Goal
-Heroes should learn and equip skills. Skills can be exclusive to one hero or shared by multiple heroes/classes. Skills should support cooldowns like tactical RPGs/Langrisser-style combat.
+## v61 — Runtime Grid Toggle + Tactical Overlay Correction
 
-### Langrisser Reference Notes
-Langrisser Mobile skills commonly expose data such as cooldown, range, and span/area. Some active skills have cooldowns after use, while others can be used every turn. Some effects reduce cooldowns after combat, after dealing damage, or after defeating a target.
+### Implemented / Planned Rule
+Battle map images should be clean art only. Grid lines are not baked into the map art. The runtime owns all tactical overlays.
 
-Reference links:
-- https://wikigrisser-next.com/skills
-- https://toucharcade.com/2019/01/25/langrisser-guide-tips-cheats-strategies-and-how-to-play-free-longer/
-- https://www.reddit.com/r/langrisser/comments/arwjjl/your_dads_enchantment_guide/
+### Runtime Overlay Rules
+- Grid toggle OFF by default for clean battle art.
+- Grid toggle ON shows the square tactical grid.
+- Blue/green movement overlay shows valid movement tiles for the selected unit.
+- Red attack overlay shows normal attack or selected skill target range.
+- Attackable enemies should glow/highlight clearly.
+- Move-cost numbers are debug-only and should be hidden from normal player view.
 
-### Skill Ownership
-A skill may be:
-- exclusive to one hero
-- shared by multiple heroes
-- class-based
-- learned by progression
-- unlocked by story
-- granted by equipment or temporary battle effects
+### Current Note
+The current first battle art still contains baked-in grid lines from the concept mockup. It remains acceptable only as a temporary development reference. A final replacement map should be regenerated without any grid lines, labels, UI, or annotations.
 
-### Skill Data Model Draft
-
-```json
-{
-  "id": "skill_long_shot",
-  "name": "Long Shot",
-  "type": "active",
-  "category": "ranged_attack",
-  "allowed_heroes": ["archer"],
-  "allowed_classes": ["archer", "ranger"],
-  "cooldown_turns": 1,
-  "initial_cooldown_turns": 0,
-  "range_min": 2,
-  "range_max": 3,
-  "area": "single_enemy",
-  "targeting": "enemy",
-  "ends_action": true,
-  "effects": [
-    { "type": "damage", "scale": 1.2 }
-  ],
-  "tags": ["ranged", "physical"]
-}
-```
-
-### Cooldown Runtime Rules for First Prototype
-- active skills may have cooldowns
-- when used, a skill becomes unavailable for its configured cooldown
-- cooldown decreases at the start of the unit’s next turn or side phase
-- skill buttons show cooldown remaining
-- cooldown values are admin-editable later
-- using a skill normally ends the unit’s action
-
-### Early Test Skills
-
-Hero:
-- Strike — cooldown 1
-- Rally — cooldown 3
-
-Sister:
-- Heal — cooldown 2
-- Spark — cooldown 1
-
-Tank:
-- Guard — cooldown 2
-- Shield Bash — cooldown 2
-
-Archer:
-- Long Shot — cooldown 1
-- Pinning Shot — cooldown 2
-
-## Future CMS Page
-
-Add later:
-
-```text
-Skills Builder
-```
-
-Should support:
-- create/edit skills
-- assign to heroes/classes
-- exclusive/shared toggle
-- cooldown settings
-- range/area settings
-- icon selection
-- animation/VFX reference
-- effects list
-- validation
-
-## Implementation Rule
-The Battle Test Lab may be temporary, but reusable battle engine code must live under:
-
-```text
-frontend/src/battle/
-```
-
-Temporary sandbox route:
-
-```text
-frontend/app/dev/battle-lab.tsx
-```
+### Future Admin Requirement
+Battle Builder CMS must eventually let us paint terrain/passability over a clean map image using x/y grid coordinates. Examples:
+- foot units cannot pass walls or high barriers
+- foot units may be slowed by rough terrain
+- flyers can pass water
+- flyers still cannot pass true walls / map boundaries
+- terrain tiles define movement cost, defense modifier, and passability by movement type
 
 ---
 
-# Update v51 — Dev Battle Lab Foundation
+## v63 Roadmap Update — Langrisser-Style Action Tray + Targeting Overlays
 
-## Purpose
-Add an isolated, dev-only testing surface for the tactical battle system before connecting battles to the live story/runtime flow.
+### Implemented in this chunk
+- Added a tactical action tray in the Battle Lab so selected units expose clear actions instead of burying skills in lower cards.
+- Added explicit **Move** and **Attack** action buttons.
+- Added selected-unit skill buttons with cooldown number display.
+- Added active targeting mode behavior:
+  - **Green tiles** = valid movement tiles.
+  - **Red tiles** = normal attack or selected skill targeting tiles.
+  - Attackable targets receive red target highlighting.
+- Added skill-defined targeting preview foundation so future skills can drive their own range instead of hardcoding attack overlays.
 
-## Why this exists
-The battle system should be tested independently so early tactical-grid work does not break existing Barcadia exploration, hotspots, story triggers, or Dev Mode tools.
+### Required future behavior
+- Normal battle maps must not contain baked-in grid lines. The grid is a runtime overlay only.
+- The runtime grid must be user/dev toggleable.
+- Move cost numbers are dev-only and should not appear in normal player mode.
+- Skills should define their targeting behavior through data: range, min range, target type, shape, cooldown, and later AoE.
+- The eventual Battle Builder CMS must edit terrain/passability by x/y grid coordinates instead of relying on drawn grid lines in art.
 
-## Added files / planned replacement files
-- `frontend/app/dev/battle-lab.tsx`
-- `frontend/assets/images/battle/first_battle_map.png`
-- `frontend/app/(tabs)/world.tsx`
-- `docs/BATTLE_SYSTEM_PLAN.md`
-- `docs/BARCADIA_CHANGELOG_ROADMAP.md`
+### Langrisser-style battle UX target
+- Select unit -> show movement / action affordances.
+- Choose Move -> green reachable tiles.
+- Choose Attack -> red normal attack tiles and attackable target highlights.
+- Choose Skill -> skill-specific target overlay and cooldown-aware skill button state.
+- Lower-right style skill/action tray remains a target UX direction for landscape combat mode.
 
-## Battle Lab v1 behavior
-- Opens from the in-game Dev Mode panel.
-- Uses the approved bright city first-battle reference map.
-- Shows a square grid overlay.
-- Places first-battle story units:
-  - Hero in plain clothes
-  - 3 thug enemies
-  - hidden pickpocket child as non-combatant
-- Shows terrain data and unit stats.
-- Shows prototype movement and attack overlays.
+## v64 — Combat Readability + Target Clarity Polish
 
-## Strong constraint
-This is dev-only and isolated. No story progression, hotspot runtime, or main game flow should depend on this screen yet.
-
-## Next battle chunks
-1. Terrain-aware movement with legal/illegal tile handling.
-2. Basic combat, HP, and attack range.
-3. Turn order and enemy AI stub.
-4. Skills and cooldowns.
-5. Battle result flow back into story runtime.
-
----
-
-## Update v52 — Terrain + Map Data Foundation
-
-### Strong Architecture Rule: Temporary Entry Point, Permanent Engine
-The Battle Lab route is only a dev/testing shell. It must not become ghost code or a duplicate battle implementation.
-
-Temporary/dev-only:
-
-```text
-frontend/app/dev/battle-lab.tsx
-```
-
-Permanent/reusable battle engine:
-
-```text
-frontend/src/battle/
-```
-
-Before launch, the project must have:
-- no ghost/relic code
-- no abandoned test-only battle logic in production flow
-- no duplicate battle engines
-- no visible stub buttons/text
-- all visible controls working or removed
-
-The Battle Lab can remain hidden behind Dev Mode for QA, but story battles must eventually call the shared battle engine modules, not copied lab logic.
-
-### Added in v52
-- Reusable battle types in `frontend/src/battle/types.ts`
-- Terrain rules in `frontend/src/battle/terrain.ts`
-- First battle scenario data in `frontend/src/battle/maps/cityStreetAmbush.ts`
-- Battle Lab now imports data/helpers from the reusable engine layer instead of owning all logic inline.
-- Movement preview now uses terrain-aware movement costs.
-
-### Terrain Rules v1
-- Stone Walkway: normal movement, no bonus
-- Open Road: fast but exposed, small defense penalty
-- Yard Grass: small defensive bonus
-- Crates/Cover: slower movement, strong defense bonus
-- Narrow Alley: chokepoint defensive tile
-- Fence/Low Wall: slow obstacle tile with defense bonus
-- House/Wall: blocked
-
-### Next Chunk
-v53 should add real unit movement:
-- select unit
-- tap valid blue tile to move
-- prevent illegal moves
-- consume unit action/move state
-- show current phase/action status
-
----
-
-## Update v53 — Tactical Unit Movement
-
-### Added in v53
-- Battle Lab units are now stateful instead of static scenario tokens.
-- Selecting a unit updates its legal movement preview.
-- Tapping a blue legal tile moves the selected ally unit.
-- Movement respects terrain cost from the reusable terrain engine.
-- Units cannot move into blocked terrain or occupied tiles.
-- Moving a unit marks it as moved for the current test phase.
-- Added Battle Lab controls:
-  - Refresh Movement
-  - Reset Battle Lab
-- Added a lightweight battle log for movement/testing feedback.
-
-### Reusable Battle Engine Additions
-- `frontend/src/battle/movement.ts`
-  - `getUnitAt`
-  - `isTileOccupied`
-  - `calculateLegalMoveTiles`
-  - `canMoveUnitTo`
-  - `moveUnit`
-  - `resetAllyMovement`
-
-### Still Isolated / Dev-Only
-The Battle Lab remains a testing shell. Movement logic lives in reusable `frontend/src/battle/` modules so the future story-integrated battle runtime can call the same movement functions without copying lab code.
-
-### Known Limitations
-- Movement animation is not polished yet.
-- There is no path preview line yet.
-- Enemy units can be selected for inspection, but only allied units can move.
-- No attack execution or turn system yet.
-
-### Next Chunk
-v54 should add basic combat:
-- select target in attack range
-- apply damage
-- terrain defense modifiers
-- HP display updates
-- defeat/KO state
-- simple combat log
+- Added reusable tactical overlay helpers for movement tiles, attack tiles, and attackable target IDs.
+- Battle UX rule: normal player movement should be shown as clean green/blue movement tiles, not debug numbers.
+- Battle UX rule: normal attacks and skill target ranges should be shown as red targeting tiles.
+- Attackable enemies should be visibly emphasized so the player can immediately tell who can be attacked.
+- Debug overlays such as movement cost numbers should remain optional/dev-only.
+- Roadmap reinforced: final battle maps should not include baked-in grid lines; grid visibility must be runtime-toggleable.
 
 
-## Update v54 — Combat / HP / Damage / Defeat State
 
-Changed files:
-- `frontend/app/dev/battle-lab.tsx`
-- `frontend/src/battle/combat.ts`
-- `frontend/src/battle/types.ts`
-- `frontend/src/battle/index.ts`
-- `docs/BATTLE_SYSTEM_PLAN.md`
-- `docs/BARCADIA_CHANGELOG_ROADMAP.md`
+## Update v65 — Battle QA Cleanup + Story-Return Foundation
 
-Added:
-- Attack targeting from selected ally to enemy units on red attack tiles.
-- HP bars on unit tokens and the selected-unit panel.
-- Terrain-aware damage calculation using defender terrain defense modifiers.
-- Simple counterattack when defender survives and attacker is in defender range.
-- Defeated state for units.
-- Victory/defeat condition detection hooks for the next turn-system chunk.
-
-Known limitations:
-- No player/enemy phase system yet.
-- No enemy AI yet.
-- No combat preview panel yet.
-- No battle result screen yet.
-
-Next planned update:
-- v55 Turns + Enemy AI + victory/defeat flow.
-
----
-
-## Intermittent Update — Cinematic Dev Viewer
-
-Before continuing the battle chunks, Dev Mode was expanded with a cinematic test viewer so current MP4 cinematics can be previewed in-game.
-
-### Important Asset Rule
-The repo-root `Cinematics/` folder can hold working cinematic files and personal cinematic references. Runtime-tested MP4s are served by the backend from:
-
-```text
-/cinematics/<filename>
-```
-
-Current expected test file:
-
-```text
-Cinematics/Opening Cinematic Latest.mp4
-```
-
-### No Ghost Code Rule
-The Dev Mode cinematic button is temporary/testing-only. The actual reusable concept is a Cinematic Player that Story Builder can eventually call from an event or story scene.
-
-When production cleanup happens, dev-only cinematic entry points must be removed or hidden.
-
----
-
-## Intermittent Update — Cinematic Orientation Testing
-
-Before continuing battle chunks, Dev Mode cinematic testing was upgraded with two fullscreen presentation options:
-
-- Portrait Fullscreen
-- Landscape Fullscreen
-
-This helps decide whether Barcadia should continue portrait-first, move toward a landscape-first “new era RPG” presentation, or support different cinematic layouts. This is intentionally dev-only and does not alter the battle roadmap.
-
-### No Ghost Code Note
-The cinematic test buttons are temporary Dev Mode utilities. They should be hidden or removed before launch unless turned into a proper production cinematic player triggered by Story Builder events.
-
-### Next Battle Chunk
-Resume with tactical battle turn system + enemy AI + victory/defeat flow.
+- Added battle result model for `active`, `victory`, and `defeat`.
+- Added retry battle flow and return-to-game foundation for future Story Builder integration.
+- Added Battle Lab QA checks for duplicate units, out-of-bounds units, missing sides, and required Battle 001 neutral child setup.
+- Reinforced architecture rule: `frontend/app/dev/*` is a QA harness only; permanent battle logic belongs in `frontend/src/battle/*`.
+- No launch builds should keep ghost/relic code, dead buttons, visible stubs, or unused dev-only code paths outside gated QA tools.
