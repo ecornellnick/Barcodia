@@ -25,3 +25,6 @@ frontend/.expo/
 # Metro / React Native cache
 frontend/.metro-cache/
 .metro-cache/
+
+# Large local/export archives
+*.zip

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Barcodia Comic Reader — Chapter Browser</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">Barcodia Comic / Manga Prototype</div>
+      <h1 id="chapterTitle">Chapter loading…</h1>
+      <p id="chapterSubtitle"></p>
+    </div>
+    <div class="top-actions">
+      <button id="openPagesBtn" class="secondary">Pages</button>
+      <button id="toggleNotesBtn" class="secondary">Hide Notes</button>
+      <button id="fitBtn" class="secondary">Fit Width</button>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <section class="card">
+        <h2>Canon Lock</h2>
+        <ul class="small-list">
+          <li><strong>Hero:</strong> references/canon_characters/hero_main_unnamed.png</li>
+          <li><strong>Twin sister:</strong> references/canon_characters/twin_sister_blonde.png</li>
+          <li><strong>Mother:</strong> references/canon_characters/mother.png</li>
+          <li><strong>Maverick:</strong> anti-hero, not protagonist here</li>
+          <li><strong>Bedroom/Kitchen/Village:</strong> use supplied environment refs</li>
+          <li><strong>Page browser:</strong> full-screen modal, grouped by chapter</li>
+          <li><strong>Last-read state:</strong> automatically remembered in this browser</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Page Notes</h2>
+        <div id="pageNotes"></div>
+      </section>
+    </aside>
+
+    <section class="reader-stage">
+      <div class="reader-controls top-controls">
+        <button id="prevBtn">← Previous</button>
+        <div class="page-meta">
+          <div id="pageCounter" class="page-counter">Page 1 / 17</div>
+          <div id="currentChapterLabel" class="chapter-pill">Chapter 1</div>
+        </div>
+        <div class="goto-controls" aria-label="Go to page controls">
+          <label for="gotoPageInput">Go to</label>
+          <input id="gotoPageInput" type="number" min="1" value="1" />
+          <button id="gotoPageBtn" class="secondary">Go</button>
+        </div>
+        <button id="nextBtn">Next →</button>
+      </div>
+
+      <div id="pageWrap" class="page-wrap fit-height">
+        <img id="pageImage" alt="Comic storyboard page" />
+      </div>
+
+      <div class="reader-controls bottom-controls">
+        <button id="prevBtn2">← Previous</button>
+        <div class="hint">Keyboard: ← / → · P opens page browser · Esc closes it · Last page is remembered automatically.</div>
+        <button id="nextBtn2">Next →</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="pagesModal" class="modal hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="pagesModalTitle">
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div>
+          <div class="eyebrow">Barcodia Comic Reader</div>
+          <h2 id="pagesModalTitle">Page Browser</h2>
+          <p>Browse pages by chapter. Click a thumbnail to jump to that page.</p>
+        </div>
+        <div class="modal-actions">
+          <div class="goto-controls modal-goto" aria-label="Go to page controls in modal">
+            <label for="modalGotoPageInput">Go to</label>
+            <input id="modalGotoPageInput" type="number" min="1" value="1" />
+            <button id="modalGotoPageBtn" class="secondary">Go</button>
+          </div>
+          <button id="closePagesBtn" class="secondary">Close</button>
+        </div>
+      </div>
+      <div id="chapterBrowser" class="chapter-browser"></div>
+    </div>
+  </div>
+
+  <script src="js/chapter-data.js"></script>
+  <script src="js/reader.js"></script>
+</body>
+</html>
